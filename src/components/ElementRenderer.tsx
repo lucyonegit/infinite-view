@@ -1,17 +1,13 @@
 import React, { memo, useState, useCallback } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import type { Element, ResizeHandle } from '../types/editor';
+import type { Element } from '../types/editor';
 import { useEditorStore } from '../store/editorStore';
 import './ElementRenderer.css';
 
 interface ElementRendererProps {
   element: Element;
   isSelected: boolean;
-  zoom: number;
-  /** 是否作为 Frame 的子元素渲染 (使用相对坐标) */
-  isChild?: boolean;
-  /** 父 Frame 的坐标 (用于计算相对位置) */
-  parentOffset?: { x: number; y: number };
+  zoom?: number;
 }
 
 /**
@@ -20,9 +16,7 @@ interface ElementRendererProps {
 export const ElementRenderer = memo(function ElementRenderer({ 
   element, 
   isSelected, 
-  zoom,
-  isChild = false,
-  parentOffset = { x: 0, y: 0 },
+  zoom = 1,
 }: ElementRendererProps) {
   // 如果是 Frame，使用 FrameRenderer
   if (element.type === 'frame') {
@@ -31,8 +25,6 @@ export const ElementRenderer = memo(function ElementRenderer({
         element={element}
         isSelected={isSelected}
         zoom={zoom}
-        isChild={isChild}
-        parentOffset={parentOffset}
       />
     );
   }
@@ -42,9 +34,6 @@ export const ElementRenderer = memo(function ElementRenderer({
     <BasicElementRenderer
       element={element}
       isSelected={isSelected}
-      zoom={zoom}
-      isChild={isChild}
-      parentOffset={parentOffset}
     />
   );
 });
@@ -55,16 +44,13 @@ export const ElementRenderer = memo(function ElementRenderer({
 const BasicElementRenderer = memo(function BasicElementRenderer({
   element,
   isSelected,
-  zoom,
-  isChild = false,
-  parentOffset = { x: 0, y: 0 },
-}: ElementRendererProps) {
+}: Omit<ElementRendererProps, 'zoom'>) {
   const [isEditing, setIsEditing] = useState(false);
   const updateElement = useEditorStore(state => state.updateElement);
 
-  // 计算位置 (如果是子元素，使用相对坐标)
-  const left = isChild ? element.x - parentOffset.x : element.x;
-  const top = isChild ? element.y - parentOffset.y : element.y;
+  // 计算位置 (store 现在存储的是相对父节点的坐标)
+  const left = element.x;
+  const top = element.y;
 
   const style: React.CSSProperties = {
     left,
@@ -104,11 +90,6 @@ const BasicElementRenderer = memo(function BasicElementRenderer({
       onDoubleClick={handleDoubleClick}
     >
       {renderElementContent(element, isEditing, handleTextChange, handleTextBlur)}
-      
-      {/* 选中时显示缩放手柄 */}
-      {isSelected && !isEditing && (
-        <ResizeHandles zoom={zoom} />
-      )}
     </div>
   );
 });
@@ -119,9 +100,7 @@ const BasicElementRenderer = memo(function BasicElementRenderer({
 const FrameRenderer = memo(function FrameRenderer({ 
   element, 
   isSelected, 
-  zoom,
-  isChild = false,
-  parentOffset = { x: 0, y: 0 },
+  zoom = 1,
 }: ElementRendererProps) {
   const selectedIds = useEditorStore(state => state.selectedIds);
   const hoverFrameId = useEditorStore(state => state.hoverFrameId);
@@ -134,9 +113,9 @@ const FrameRenderer = memo(function FrameRenderer({
   // 是否正在被拖拽悬停
   const isHovered = hoverFrameId === element.id;
   
-  // 计算位置
-  const left = isChild ? element.x - parentOffset.x : element.x;
-  const top = isChild ? element.y - parentOffset.y : element.y;
+  // 计算位置 (已是相对坐标)
+  const left = element.x;
+  const top = element.y;
 
   const style: React.CSSProperties = {
     left,
@@ -145,9 +124,12 @@ const FrameRenderer = memo(function FrameRenderer({
     height: element.height,
     transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
     zIndex: element.zIndex,
-    ...getElementStyles(element),
+    // 背景由内部渲染，容器保持透明以防万一
+    background: 'transparent',
+    border: 'none',
   };
 
+  const backgroundStyle = getElementStyles(element);
   const className = `element element-frame ${isSelected ? 'selected' : ''} ${isHovered ? 'hovered' : ''}`;
 
   return (
@@ -157,30 +139,29 @@ const FrameRenderer = memo(function FrameRenderer({
       data-element-id={element.id}
       data-frame="true"
     >
-      {/* Frame 标题 */}
+      {/* Frame 标题 - 在裁剪层之外 */}
       <div className="frame-label">
         <span className="frame-icon">#</span>
         <span className="frame-name">{element.name || 'Frame'}</span>
       </div>
       
-      {/* 渲染子元素 */}
-      <div className="frame-children">
-        {children.map((child) => (
-          <ElementRenderer
-            key={child.id}
-            element={child}
-            isSelected={selectedIds.includes(child.id)}
-            zoom={zoom}
-            isChild={true}
-            parentOffset={{ x: element.x, y: element.y }}
-          />
-        ))}
+      {/* 裁剪容器 */}
+      <div className="frame-content">
+        {/* 背景层 - 在裁剪层内部 */}
+        <div className="frame-background" style={backgroundStyle} />
+        
+        {/* 子元素层 */}
+        <div className="frame-children">
+          {children.map((child) => (
+            <ElementRenderer
+              key={child.id}
+              element={child}
+              isSelected={selectedIds.includes(child.id)}
+              zoom={zoom}
+            />
+          ))}
+        </div>
       </div>
-      
-      {/* 选中时显示缩放手柄 */}
-      {isSelected && (
-        <ResizeHandles zoom={zoom} />
-      )}
     </div>
   );
 });
@@ -243,42 +224,6 @@ function getElementStyles(element: Element): React.CSSProperties {
     fontFamily: style.fontFamily,
     textAlign: style.textAlign,
   };
-}
-
-/**
- * 缩放手柄组件
- */
-function ResizeHandles({ zoom }: { zoom: number }) {
-  const setInteraction = useEditorStore(state => state.setInteraction);
-  const handles: ResizeHandle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
-
-  const handleMouseDown = useCallback((e: React.MouseEvent, handle: ResizeHandle) => {
-    e.stopPropagation();
-    setInteraction({
-      isResizing: true,
-      resizeHandle: handle,
-      startPoint: { x: e.clientX, y: e.clientY },
-    });
-  }, [setInteraction]);
-
-  // 保持手柄在屏幕上的大小一致 (大约 8px)
-  const handleSize = 8 / zoom;
-
-  return (
-    <div className="resize-handles">
-      {handles.map((handle) => (
-        <div
-          key={handle}
-          className={`resize-handle ${handle}`}
-          style={{
-            width: handleSize,
-            height: handleSize,
-          }}
-          onMouseDown={(e) => handleMouseDown(e, handle)}
-        />
-      ))}
-    </div>
-  );
 }
 
 export default ElementRenderer;

@@ -33,10 +33,9 @@
 
 /* Frame 元素 */
 .element-frame {
-  background: #ffffff;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  /* 移除这里的 overflow: hidden，否则看不到外部的标签 */
+  /* 基础背景和边框移入内部裁切层 .frame-background */
+  background: transparent !important;
+  border: none !important;
 }
 
 .element-frame.selected {
@@ -74,13 +73,39 @@
   color: #1a73e8;
 }
 
-/* Frame 子元素容器 */
-.frame-children {
-  position: relative;
+.frame-content {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
-  overflow: hidden; /* 在这里进行裁切 */
-  border-radius: 3px; /* 略小于父容器以适应边框 */
+  overflow: hidden; /* 核心裁切 */
+  contain: paint; /* 强化裁切性能和范围 */
+  pointer-events: none; /* 让事件穿透 */
+  border-radius: 4px; /* 与父容器圆角一致 */
+}
+
+/* 背景层，在裁切容器内部 */
+.frame-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.frame-children {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* 让事件穿透到子元素 */
+}
+
+.frame-children > * {
+  pointer-events: auto; /* 子元素重新启用事件 */
 }
 
 /* 文本元素 */

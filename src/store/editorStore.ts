@@ -82,6 +82,9 @@ interface EditorStore extends EditorState {
 
   // 悬停 Frame 状态 (拖动时实时检测)
   setHoverFrame: (frameId: string | null) => void;
+
+  // 内部辅助
+  getElementWorldPos: (id: string) => Point;
 }
 
 // ============ 创建 Store ============
@@ -209,6 +212,25 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     set({ activeTool: tool, selectedIds: tool === 'select' ? get().selectedIds : [] });
   },
 
+  // ========== 辅助逻辑 (内部使用) ==========
+
+  /** 获取元素的世界坐标 */
+  getElementWorldPos: (id: string): Point => {
+    const { elements } = get();
+    const element = elements.find(el => el.id === id);
+    if (!element) return { x: 0, y: 0 };
+
+    if (!element.parentId) {
+      return { x: element.x, y: element.y };
+    }
+
+    const parentPos = get().getElementWorldPos(element.parentId);
+    return {
+      x: parentPos.x + element.x,
+      y: parentPos.y + element.y,
+    };
+  },
+
   // ========== 元素操作 ==========
 
   addElement: (element) => {
@@ -272,27 +294,31 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   // ========== Frame 父子关系操作 ==========
 
   addToFrame: (elementId, frameId) => {
-    const { elements } = get();
+    const { elements, getElementWorldPos } = get();
     const element = elements.find(el => el.id === elementId);
     const frame = elements.find(el => el.id === frameId);
 
     if (!element || !frame || frame.type !== 'frame') return;
     if (element.parentId === frameId) return; // 已经在这个 frame 中
 
+    // 计算世界坐标
+    const worldPos = getElementWorldPos(elementId);
+    const frameWorldPos = getElementWorldPos(frameId);
+
     set((state) => ({
       elements: state.elements.map((el) => {
         if (el.id === elementId) {
-          // 设置元素的 parentId
-          return { ...el, parentId: frameId };
+          // 将世界坐标转换为相对于新 frame 的相对坐标
+          const relativeX = worldPos.x - frameWorldPos.x;
+          const relativeY = worldPos.y - frameWorldPos.y;
+          return { ...el, parentId: frameId, x: relativeX, y: relativeY };
         }
         if (el.id === frameId) {
-          // 更新 frame 的 children 列表
           const children = el.children || [];
           if (!children.includes(elementId)) {
             return { ...el, children: [...children, elementId] };
           }
         }
-        // 如果元素之前在其他 frame 中，从那个 frame 移除
         if (el.type === 'frame' && el.children?.includes(elementId) && el.id !== frameId) {
           return { ...el, children: el.children.filter(id => id !== elementId) };
         }
@@ -302,17 +328,18 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   },
 
   removeFromFrame: (elementId) => {
-    const { elements } = get();
+    const { getElementWorldPos, elements } = get();
     const element = elements.find(el => el.id === elementId);
 
     if (!element || !element.parentId) return;
 
     const oldParentId = element.parentId;
+    const worldPos = getElementWorldPos(elementId);
 
     set((state) => ({
       elements: state.elements.map((el) => {
         if (el.id === elementId) {
-          return { ...el, parentId: undefined };
+          return { ...el, parentId: undefined, x: worldPos.x, y: worldPos.y };
         }
         if (el.id === oldParentId) {
           return { ...el, children: (el.children || []).filter(id => id !== elementId) };
@@ -328,18 +355,19 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   },
 
   findFrameAtPoint: (x, y, excludeIds = []) => {
-    const { elements } = get();
+    const { elements, getElementWorldPos } = get();
     // 按 zIndex 倒序查找，找到最上层的 frame
     const frames = elements
       .filter(el => el.type === 'frame' && !excludeIds.includes(el.id))
       .sort((a, b) => b.zIndex - a.zIndex);
 
     for (const frame of frames) {
+      const worldPos = getElementWorldPos(frame.id);
       if (
-        x >= frame.x &&
-        x <= frame.x + frame.width &&
-        y >= frame.y &&
-        y <= frame.y + frame.height
+        x >= worldPos.x &&
+        x <= worldPos.x + frame.width &&
+        y >= worldPos.y &&
+        y <= worldPos.y + frame.height
       ) {
         return frame;
       }
