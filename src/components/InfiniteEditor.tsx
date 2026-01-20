@@ -3,6 +3,8 @@ import InfiniteViewer from 'react-infinite-viewer';
 import { useEditorStore } from '../store/editorStore';
 import { Toolbar } from './Toolbar';
 import { ElementRenderer } from './ElementRenderer';
+import { Guidelines } from './Guidelines';
+import { useSnapping, type SnapLine } from '../hooks/useSnapping';
 import { exportSelectedFrameAsImage } from '../utils/exportUtils';
 import type { Point, Bounds } from '../types/editor';
 import './InfiniteEditor.css';
@@ -19,6 +21,10 @@ export function InfiniteEditor({ onBack }: InfiniteEditorProps) {
   const viewerRef = useRef<InfiniteViewer>(null);
   const [creatingPreview, setCreatingPreview] = useState<Bounds | null>(null);
   const [zoom, setZoom] = useState(1);
+  const [activeSnapLines, setActiveSnapLines] = useState<{
+    horizontal: SnapLine[];
+    vertical: SnapLine[];
+  }>({ horizontal: [], vertical: [] });
 
   const {
     activeTool,
@@ -46,6 +52,9 @@ export function InfiniteEditor({ onBack }: InfiniteEditorProps) {
     reorderElements,
     deleteElements,
   } = useEditorStore();
+
+  // 吸附功能
+  const { snap } = useSnapping(elements, selectedIds, { threshold: 8 });
 
   // ============ 坐标转换 ============
 
@@ -166,10 +175,34 @@ export function InfiniteEditor({ onBack }: InfiniteEditorProps) {
     const worldPoint = screenToWorld(e.clientX, e.clientY);
 
     if (interaction.isDragging && interaction.startPoint) {
-      const deltaX = worldPoint.x - interaction.startPoint.x;
-      const deltaY = worldPoint.y - interaction.startPoint.y;
-      moveElements(selectedIds, deltaX, deltaY);
-      setInteraction({ startPoint: worldPoint });
+      // 获取第一个选中元素的边界（用于吸附计算）
+      const firstElement = elements.find(el => el.id === selectedIds[0]);
+      if (firstElement) {
+        // 计算新位置（基于鼠标移动）
+        const deltaX = worldPoint.x - interaction.startPoint.x;
+        const deltaY = worldPoint.y - interaction.startPoint.y;
+        const newBounds = {
+          x: firstElement.x + deltaX,
+          y: firstElement.y + deltaY,
+          width: firstElement.width,
+          height: firstElement.height,
+        };
+
+        // 应用吸附
+        const snapResult = snap(newBounds);
+        const snappedDeltaX = snapResult.x - firstElement.x;
+        const snappedDeltaY = snapResult.y - firstElement.y;
+
+        // 更新吸附线显示
+        setActiveSnapLines({
+          horizontal: snapResult.horizontalLines,
+          vertical: snapResult.verticalLines,
+        });
+
+        // 移动元素（使用吸附后的增量）
+        moveElements(selectedIds, snappedDeltaX, snappedDeltaY);
+        setInteraction({ startPoint: worldPoint });
+      }
 
       // 实时计算是否进入了某个 Frame
       if (selectedIds.length > 0) {
@@ -210,14 +243,15 @@ export function InfiniteEditor({ onBack }: InfiniteEditorProps) {
     } else if (interaction.isResizing && interaction.startPoint && interaction.resizeHandle) {
       handleResize(worldPoint);
     }
-  }, [interaction, screenToWorld, moveElements, selectedIds, updateMarqueeSelect, setInteraction, handleResize, elements, findFrameAtPoint, hoverFrameId, setHoverFrame, addToFrame, removeFromFrame]);
+  }, [interaction, screenToWorld, moveElements, selectedIds, updateMarqueeSelect, setInteraction, handleResize, elements, findFrameAtPoint, hoverFrameId, setHoverFrame, addToFrame, removeFromFrame, snap]);
 
   const handleViewportMouseUp = useCallback((e: React.MouseEvent) => {
     const worldPoint = screenToWorld(e.clientX, e.clientY);
 
     if (interaction.isDragging) {
-      // 停止拖拽时重置 hover 状态
+      // 停止拖拽时重置 hover 状态和吸附线
       setHoverFrame(null);
+      setActiveSnapLines({ horizontal: [], vertical: [] });
       stopDragging();
     } else if (interaction.isMarqueeSelecting) {
       finishMarqueeSelect();
@@ -286,6 +320,42 @@ export function InfiniteEditor({ onBack }: InfiniteEditorProps) {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedIds, reorderElements, deleteElements]);
+
+  // ============ Window 级别鼠标事件（用于创建模式在任意位置工作） ============
+
+  useEffect(() => {
+    // 只在创建模式下添加 window 级别事件
+    if (activeTool !== 'rectangle' && activeTool !== 'text' && activeTool !== 'frame') {
+      return;
+    }
+
+    const handleWindowMouseMove = (e: MouseEvent) => {
+      if (!interaction.isCreating || !interaction.startPoint) return;
+      
+      const worldPoint = screenToWorld(e.clientX, e.clientY);
+      const x = Math.min(interaction.startPoint.x, worldPoint.x);
+      const y = Math.min(interaction.startPoint.y, worldPoint.y);
+      const width = Math.abs(worldPoint.x - interaction.startPoint.x);
+      const height = Math.abs(worldPoint.y - interaction.startPoint.y);
+      setCreatingPreview({ x, y, width, height });
+    };
+
+    const handleWindowMouseUp = (e: MouseEvent) => {
+      if (!interaction.isCreating) return;
+      
+      const worldPoint = screenToWorld(e.clientX, e.clientY);
+      finishCreating(worldPoint);
+      setCreatingPreview(null);
+    };
+
+    window.addEventListener('mousemove', handleWindowMouseMove);
+    window.addEventListener('mouseup', handleWindowMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleWindowMouseMove);
+      window.removeEventListener('mouseup', handleWindowMouseUp);
+    };
+  }, [activeTool, interaction.isCreating, interaction.startPoint, screenToWorld, finishCreating]);
 
   const handleResetView = useCallback(() => {
     const viewer = viewerRef.current;
@@ -399,6 +469,14 @@ export function InfiniteEditor({ onBack }: InfiniteEditorProps) {
                 />
               ))}
           </div>
+
+          {/* 吸附辅助线 */}
+          {(activeSnapLines.horizontal.length > 0 || activeSnapLines.vertical.length > 0) && (
+            <Guidelines
+              horizontalLines={activeSnapLines.horizontal}
+              verticalLines={activeSnapLines.vertical}
+            />
+          )}
 
           {/* 创建预览 */}
           {creatingPreview && (
