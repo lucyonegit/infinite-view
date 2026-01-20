@@ -329,6 +329,36 @@ export function InfiniteEditor({ onBack }: InfiniteEditorProps) {
       return;
     }
 
+    const handleWindowMouseDown = (e: MouseEvent) => {
+      if (e.button !== 0) return;
+      
+      // 检查点击是否在 InfiniteViewer 容器内
+      const viewer = viewerRef.current;
+      if (!viewer) return;
+      
+      const container = viewer.getContainer();
+      const rect = container.getBoundingClientRect();
+      
+      // 如果点击不在容器范围内，忽略
+      if (
+        e.clientX < rect.left ||
+        e.clientX > rect.right ||
+        e.clientY < rect.top ||
+        e.clientY > rect.bottom
+      ) {
+        return;
+      }
+
+      // 如果已经在创建中，忽略
+      if (interaction.isCreating) return;
+
+      const worldPoint = screenToWorld(e.clientX, e.clientY);
+      startCreating(
+        activeTool === 'text' ? 'text' : activeTool === 'frame' ? 'frame' : 'rectangle',
+        worldPoint
+      );
+    };
+
     const handleWindowMouseMove = (e: MouseEvent) => {
       if (!interaction.isCreating || !interaction.startPoint) return;
       
@@ -348,14 +378,16 @@ export function InfiniteEditor({ onBack }: InfiniteEditorProps) {
       setCreatingPreview(null);
     };
 
+    window.addEventListener('mousedown', handleWindowMouseDown);
     window.addEventListener('mousemove', handleWindowMouseMove);
     window.addEventListener('mouseup', handleWindowMouseUp);
 
     return () => {
+      window.removeEventListener('mousedown', handleWindowMouseDown);
       window.removeEventListener('mousemove', handleWindowMouseMove);
       window.removeEventListener('mouseup', handleWindowMouseUp);
     };
-  }, [activeTool, interaction.isCreating, interaction.startPoint, screenToWorld, finishCreating]);
+  }, [activeTool, interaction.isCreating, interaction.startPoint, screenToWorld, finishCreating, startCreating]);
 
   const handleResetView = useCallback(() => {
     const viewer = viewerRef.current;
@@ -441,8 +473,8 @@ export function InfiniteEditor({ onBack }: InfiniteEditorProps) {
         usePinch={true}
         pinchThreshold={0}
         zoomRange={[0.1, 5]}
-        rangeX={[-2000, 2000]}
-        rangeY={[-2000, 2000]}
+        // rangeX={[-2000, 2000]}
+        // rangeY={[-2000, 2000]}
         onScroll={handleScroll}
         onPinch={handlePinch}
       >
