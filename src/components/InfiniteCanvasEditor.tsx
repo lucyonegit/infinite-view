@@ -17,7 +17,6 @@ interface InfiniteCanvasEditorProps {
  */
 export function InfiniteCanvasEditor({ onBack }: InfiniteCanvasEditorProps) {
   const viewerRef = useRef<InfiniteViewer>(null);
-  const viewportRef = useRef<HTMLDivElement>(null);
   const [creatingPreview, setCreatingPreview] = useState<Bounds | null>(null);
   const [zoom, setZoom] = useState(1);
 
@@ -50,17 +49,19 @@ export function InfiniteCanvasEditor({ onBack }: InfiniteCanvasEditorProps) {
 
   // ============ 坐标转换 ============
 
-  const screenToCanvas = useCallback((screenX: number, screenY: number): Point => {
+  const screenToCanvas = useCallback((clientX: number, clientY: number): Point => {
     const viewer = viewerRef.current;
-    if (!viewer) return { x: screenX, y: screenY };
+    if (!viewer) return { x: clientX, y: clientY };
 
+    const wrapper = viewer.getWrapper();
+    const rect = wrapper.getBoundingClientRect();
     const scrollLeft = viewer.getScrollLeft();
     const scrollTop = viewer.getScrollTop();
     const currentZoom = viewer.getZoom();
 
     return {
-      x: (screenX + scrollLeft) / currentZoom,
-      y: (screenY + scrollTop) / currentZoom,
+      x: (clientX - rect.left + scrollLeft) / currentZoom,
+      y: (clientY - rect.top + scrollTop) / currentZoom,
     };
   }, []);
 
@@ -122,13 +123,7 @@ export function InfiniteCanvasEditor({ onBack }: InfiniteCanvasEditorProps) {
   const handleViewportMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button !== 0) return;
     
-    const viewport = viewportRef.current;
-    if (!viewport) return;
-
-    const rect = viewport.getBoundingClientRect();
-    const screenX = e.clientX - rect.left;
-    const screenY = e.clientY - rect.top;
-    const canvasPoint = screenToCanvas(screenX, screenY);
+    const canvasPoint = screenToCanvas(e.clientX, e.clientY);
 
     // 检查是否点击到元素
     const clickedElement = (e.target as HTMLElement).closest('[data-element-id]');
@@ -164,13 +159,7 @@ export function InfiniteCanvasEditor({ onBack }: InfiniteCanvasEditorProps) {
   }, [activeTool, selectedIds, screenToCanvas, selectElements, deselectAll, startDragging, startMarqueeSelect, startCreating]);
 
   const handleViewportMouseMove = useCallback((e: React.MouseEvent) => {
-    const viewport = viewportRef.current;
-    if (!viewport) return;
-
-    const rect = viewport.getBoundingClientRect();
-    const screenX = e.clientX - rect.left;
-    const screenY = e.clientY - rect.top;
-    const canvasPoint = screenToCanvas(screenX, screenY);
+    const canvasPoint = screenToCanvas(e.clientX, e.clientY);
 
     if (interaction.isDragging && interaction.startPoint) {
       const deltaX = canvasPoint.x - interaction.startPoint.x;
@@ -220,13 +209,7 @@ export function InfiniteCanvasEditor({ onBack }: InfiniteCanvasEditorProps) {
   }, [interaction, screenToCanvas, moveElements, selectedIds, updateMarqueeSelect, setInteraction, handleResize, elements, findFrameAtPoint, hoverFrameId, setHoverFrame, addToFrame, removeFromFrame]);
 
   const handleViewportMouseUp = useCallback((e: React.MouseEvent) => {
-    const viewport = viewportRef.current;
-    if (!viewport) return;
-
-    const rect = viewport.getBoundingClientRect();
-    const screenX = e.clientX - rect.left;
-    const screenY = e.clientY - rect.top;
-    const canvasPoint = screenToCanvas(screenX, screenY);
+    const canvasPoint = screenToCanvas(e.clientX, e.clientY);
 
     if (interaction.isDragging) {
       // 停止拖拽时重置 hover 状态
@@ -384,13 +367,11 @@ export function InfiniteCanvasEditor({ onBack }: InfiniteCanvasEditorProps) {
         usePinch={true}
         pinchThreshold={0}
         zoomRange={[0.1, 5]}
-        rangeX={[-2000, 2000]}
-        rangeY={[-2000, 2000]}
+
         onScroll={handleScroll}
         onPinch={handlePinch}
       >
         <div
-          ref={viewportRef}
           className="canvas-viewport"
           onMouseDown={handleViewportMouseDown}
           onMouseMove={handleViewportMouseMove}
@@ -398,7 +379,7 @@ export function InfiniteCanvasEditor({ onBack }: InfiniteCanvasEditorProps) {
           onMouseLeave={handleViewportMouseUp}
         >
           {/* 网格背景 */}
-          <div className="canvas-grid-bg" />
+          {/* <div className="canvas-grid-bg" /> */}
 
           {/* 元素层 */}
           <div className="canvas-elements-layer">
