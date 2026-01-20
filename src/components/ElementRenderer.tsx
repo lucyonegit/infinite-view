@@ -145,8 +145,6 @@ const FrameRenderer = memo(function FrameRenderer({
     height: element.height,
     transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
     zIndex: element.zIndex,
-    // Frame 使用 overflow: hidden 裁切超出的子元素
-    overflow: 'hidden',
     ...getElementStyles(element),
   };
 
@@ -160,7 +158,10 @@ const FrameRenderer = memo(function FrameRenderer({
       data-frame="true"
     >
       {/* Frame 标题 */}
-      <div className="frame-label">{element.name || 'Frame'}</div>
+      <div className="frame-label">
+        <span className="frame-icon">#</span>
+        <span className="frame-name">{element.name || 'Frame'}</span>
+      </div>
       
       {/* 渲染子元素 */}
       <div className="frame-children">
@@ -260,8 +261,8 @@ function ResizeHandles({ zoom }: { zoom: number }) {
     });
   }, [setInteraction]);
 
-  // 根据缩放调整手柄大小
-  const handleSize = Math.max(8, 10 / zoom);
+  // 保持手柄在屏幕上的大小一致 (大约 8px)
+  const handleSize = 8 / zoom;
 
   return (
     <div className="resize-handles">

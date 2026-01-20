@@ -261,46 +261,7 @@
   white-space: nowrap;
 }
 
-/* Canvas Elements */
-.canvas-element {
-  position: absolute;
-  border-radius: 16px;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow:
-    0 10px 40px rgba(0, 0, 0, 0.3),
-    0 0 0 1px rgba(255, 255, 255, 0.1);
-  overflow: hidden;
-}
-
-.canvas-element::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.15) 0%,
-    transparent 50%
-  );
-  pointer-events: none;
-}
-
-.canvas-element:hover {
-  transform: translateY(-4px) scale(1.02);
-  box-shadow:
-    0 20px 60px rgba(0, 0, 0, 0.4),
-    0 0 0 2px rgba(255, 255, 255, 0.2);
-}
-
-.canvas-element.selected {
-  box-shadow:
-    0 20px 60px rgba(102, 126, 234, 0.5),
-    0 0 0 3px #667eea;
-  transform: scale(1.02);
-}
+/* Canvas Elements - Legacy (Removed to avoid conflict with editor) */
 
 .canvas-element.circle {
   border-radius: 50%;

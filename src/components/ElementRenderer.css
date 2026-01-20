@@ -9,58 +9,63 @@
   will-change: transform, left, top;
   /* 禁用过渡动画以确保拖拽流畅 */
   transition: none !important;
+  /* 默认白色背景，无阴影 */
+  background: #ffffff;
+  box-shadow: none !important;
 }
 
-.canvas-element:hover {
-  outline: 2px solid rgba(26, 115, 232, 0.5);
-  outline-offset: -2px;
+.canvas-element:hover:not(.selected):not(.editing) {
+  outline: 1.5px solid rgba(26, 115, 232, 0.4);
+  outline-offset: -1.5px;
 }
 
-.canvas-element.selected {
-  outline: 2px solid #1a73e8;
-  outline-offset: -2px;
+.canvas-element.selected:not(.editing) {
+  outline: 1.5px solid #1a73e8;
+  outline-offset: -1.5px;
 }
 
 /* 矩形元素 */
 .element-rectangle {
   background: #ffffff;
-  border-radius: 8px;
-  /* 使用更简单的阴影以提高性能 */
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 /* Frame 元素 */
 .element-frame {
-  background: rgba(255, 255, 255, 0.5);
-  border: 2px dashed #999999;
+  background: #ffffff;
+  border: 1px solid #e0e0e0;
   border-radius: 4px;
-  /* 裁切超出的子元素 */
-  overflow: hidden;
+  /* 移除这里的 overflow: hidden，否则看不到外部的标签 */
 }
 
 .element-frame.selected {
-  border-style: solid;
   border-color: #1a73e8;
 }
 
 .element-frame.hovered {
-  border-style: solid;
   border-color: #1a73e8;
-  background: rgba(26, 115, 232, 0.1);
-  box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+  background: rgba(26, 115, 232, 0.05);
 }
 
 /* Frame 标题 */
 .frame-label {
   position: absolute;
-  top: -24px;
+  top: -22px;
   left: 0;
-  font-size: 12px;
-  font-weight: 500;
-  color: #666;
+  font-size: 11px;
+  font-weight: 600;
+  color: #999;
+  display: flex;
+  align-items: center;
+  gap: 4px;
   white-space: nowrap;
   pointer-events: none;
   z-index: 10;
+  text-transform: capitalize;
+}
+
+.frame-icon {
+  font-size: 10px;
+  opacity: 0.7;
 }
 
 .element-frame.selected .frame-label {
@@ -72,6 +77,8 @@
   position: relative;
   width: 100%;
   height: 100%;
+  overflow: hidden; /* 在这里进行裁切 */
+  border-radius: 3px; /* 略小于父容器以适应边框 */
 }
 
 /* 文本元素 */
@@ -144,13 +151,14 @@
 
 .resize-handle {
   position: absolute;
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
   background: #ffffff;
-  border: 2px solid #1a73e8;
-  border-radius: 50%;
+  border: 1px solid #1a73e8;
+  border-radius: 1px; /* 趋近正方形 */
   pointer-events: auto;
   transform: translate(-50%, -50%);
+  z-index: 100;
 }
 
 .resize-handle.nw {

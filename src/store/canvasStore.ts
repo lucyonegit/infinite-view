@@ -421,10 +421,10 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
       width,
       height,
       style: {
-        fill: interaction.creatingType === 'frame' ? 'transparent' : '#ffffff',
-        stroke: interaction.creatingType === 'frame' ? '#cccccc' : undefined,
-        strokeWidth: interaction.creatingType === 'frame' ? 2 : undefined,
-        borderRadius: 8,
+        fill: '#ffffff',
+        stroke: interaction.creatingType === 'frame' ? '#e0e0e0' : undefined,
+        strokeWidth: 1,
+        borderRadius: 2,
       },
     };
 
