@@ -53,15 +53,19 @@ export function InfiniteCanvasEditor({ onBack }: InfiniteCanvasEditorProps) {
     const viewer = viewerRef.current;
     if (!viewer) return { x: clientX, y: clientY };
 
-    const wrapper = viewer.getWrapper();
-    const rect = wrapper.getBoundingClientRect();
+    const container = viewer.getContainer();
+    const rect = container.getBoundingClientRect();
     const scrollLeft = viewer.getScrollLeft();
     const scrollTop = viewer.getScrollTop();
     const currentZoom = viewer.getZoom();
 
+    // 正确的坐标转换：
+    // 1. clientX - rect.left 得到相对于容器的屏幕坐标
+    // 2. 除以 zoom 转换到画布坐标系
+    // 3. 加上滚动偏移（scrollLeft/scrollTop 已经是画布坐标，不需要再除以 zoom）
     return {
-      x: (clientX - rect.left + scrollLeft) / currentZoom,
-      y: (clientY - rect.top + scrollTop) / currentZoom,
+      x: (clientX - rect.left) / currentZoom + scrollLeft,
+      y: (clientY - rect.top) / currentZoom + scrollTop,
     };
   }, []);
 
