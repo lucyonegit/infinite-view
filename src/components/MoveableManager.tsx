@@ -27,6 +27,7 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
     setHoverFrame,
     hoverFrameId,
     viewport,
+    setInteraction,
   } = useEditorStore();
 
   // 1. 建立一个“层级键”，仅在选中元素的父节点发生变化时更新
@@ -155,16 +156,34 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
   };
 
   const handleResize = ({ target, width, height, drag }: OnResize) => {
+    // 使用 CSS transform 直接操作 DOM，避免 React 重新渲染
+    target.style.width = `${width}px`;
+    target.style.height = `${height}px`;
+    target.style.transform = `translate(${drag.beforeTranslate[0]}px, ${drag.beforeTranslate[1]}px)`;
+  };
+
+  const handleResizeEnd = ({ target }: { target: HTMLElement | SVGElement }) => {
+    console.log('Moveable: onResizeEnd');
+    setInteraction({ isResizing: false });
+
     const id = target.getAttribute('data-element-id');
     if (id) {
       const element = elements.find(el => el.id === id);
       if (element) {
+        // 获取最终的 transform 值
+        const computedStyle = window.getComputedStyle(target);
+        const matrix = new DOMMatrix(computedStyle.transform);
+        
+        // 提交最终位置和尺寸到 store
         updateElement(id, {
-          x: drag.left,
-          y: drag.top,
-          width,
-          height,
+          x: element.x + matrix.m41,
+          y: element.y + matrix.m42,
+          width: parseFloat(target.style.width),
+          height: parseFloat(target.style.height),
         });
+
+        // 清除 transform（位置已提交到 store）
+        target.style.transform = '';
       }
     }
   };
@@ -228,7 +247,11 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
         lastEvent.current = null; // 清除记录
         commitNesting();
       }}
-      onResizeStart={() => console.log('Moveable: onResizeStart')}
+      onResizeStart={() => {
+        console.log('Moveable: onResizeStart');
+        setInteraction({ isResizing: true });
+      }}
+      onResizeEnd={handleResizeEnd}
       onResize={handleResize}
       onDragGroup={handleDragGroup}
       onDragGroupEnd={() => {
@@ -241,6 +264,8 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
       edge={false}
       origin={false}
       className="custom-moveable"
+      stopPropagation={true}
+      preventDefault={true}
     />
   );
 });

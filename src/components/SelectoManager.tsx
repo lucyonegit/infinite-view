@@ -6,13 +6,20 @@ import { useEditorStore } from '../store/editorStore';
  * 使用 react-selecto 实现丝滑的选择体验
  */
 export function SelectoManager() {
-  const { selectElements, activeTool, deselectAll } = useEditorStore();
+  const { selectElements, activeTool, deselectAll, interaction } = useEditorStore();
 
   // 只有在选择工具下才启用 Selecto
   const enabled = activeTool === 'select';
 
   const onDragStart = (e: { inputEvent: MouseEvent; stop: () => void }) => {
     console.log('Selecto: onDragStart', e.inputEvent.target);
+    
+    // 如果 Moveable 正在 resize，完全不处理（解决快速拖动时鼠标脱离 handle 的问题）
+    if (interaction.isResizing) {
+      console.log('Selecto: stopped because Moveable is resizing');
+      e.stop();
+      return;
+    }
     
     // 忽略右键或者不是选择工具的情况
     if (e.inputEvent.button !== 0 || !enabled) {
@@ -22,7 +29,9 @@ export function SelectoManager() {
     
     const target = e.inputEvent.target as HTMLElement;
     // 如果点击的是 Moveable 的控制组件，停止 Selecto，让 Moveable 处理
-    if (target.closest('.moveable-control') || target.closest('.moveable-area') || target.closest('.moveable-line')) {
+    // .moveable-control = 控制点, .moveable-direction = resize handles（方向控制点）
+    // .moveable-area = 控制区域, .moveable-line = 边框线
+    if (target.closest('.moveable-control') || target.closest('.moveable-direction') || target.closest('.moveable-area') || target.closest('.moveable-line')) {
       console.log('Selecto: stopped for Moveable');
       e.stop();
       return;
