@@ -367,7 +367,8 @@ export function InfiniteCanvasEditor({ onBack }: InfiniteCanvasEditorProps) {
         usePinch={true}
         pinchThreshold={0}
         zoomRange={[0.1, 5]}
-
+        rangeX={[-2000, 2000]}
+        rangeY={[-2000, 2000]}
         onScroll={handleScroll}
         onPinch={handlePinch}
       >
@@ -379,7 +380,7 @@ export function InfiniteCanvasEditor({ onBack }: InfiniteCanvasEditorProps) {
           onMouseLeave={handleViewportMouseUp}
         >
           {/* 网格背景 */}
-          {/* <div className="canvas-grid-bg" /> */}
+          <div className="canvas-grid-bg" />
 
           {/* 元素层 */}
           <div className="canvas-elements-layer">
