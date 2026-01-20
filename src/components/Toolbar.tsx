@@ -17,7 +17,21 @@ const TOOLS: ToolConfig[] = [
 ];
 
 export function Toolbar() {
-  const { activeTool, setActiveTool } = useCanvasStore();
+  const { 
+    activeTool, 
+    setActiveTool, 
+    selectedIds, 
+    reorderElements,
+    deleteElements 
+  } = useCanvasStore();
+
+  const handleReorder = (action: 'front' | 'back' | 'forward' | 'backward') => {
+    reorderElements(selectedIds, action);
+  };
+
+  const handleDelete = () => {
+    deleteElements(selectedIds);
+  };
 
   return (
     <div className="editor-toolbar">
@@ -33,6 +47,33 @@ export function Toolbar() {
           </button>
         </div>
       ))}
+
+      {selectedIds.length > 0 && (
+        <>
+          <div className="toolbar-divider" />
+          <button
+            className="toolbar-btn reorder-btn"
+            onClick={() => handleReorder('front')}
+            data-tooltip="Bring to Front (Alt + ])"
+          >
+            ⤒
+          </button>
+          <button
+            className="toolbar-btn reorder-btn"
+            onClick={() => handleReorder('back')}
+            data-tooltip="Send to Back (Alt + [)"
+          >
+            ⤓
+          </button>
+          <button
+            className="toolbar-btn delete-btn"
+            onClick={handleDelete}
+            data-tooltip="Delete (Backspace)"
+          >
+            🗑️
+          </button>
+        </>
+      )}
     </div>
   );
 }

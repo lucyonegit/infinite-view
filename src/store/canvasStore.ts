@@ -57,6 +57,7 @@ interface CanvasStore extends CanvasState {
   removeFromFrame: (elementId: string) => void;
   getFrameChildren: (frameId: string) => CanvasElement[];
   findFrameAtPoint: (x: number, y: number, excludeIds?: string[]) => CanvasElement | null;
+  reorderElements: (ids: string[], action: 'front' | 'back' | 'forward' | 'backward') => void;
 
   // 选择操作
   selectElements: (ids: string[], additive?: boolean) => void;
@@ -93,6 +94,69 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
   selectedIds: [],
   interaction: initialInteraction,
   hoverFrameId: null,
+
+  // ========== 辅助逻辑 ==========
+
+  reorderElements: (ids, action) => {
+    const { elements } = get();
+    // 找出共同的 parentId（假设是批量操作，通常是在同一层级）
+    const firstElement = elements.find(el => el.id === ids[0]);
+    if (!firstElement) return;
+    const parentId = firstElement.parentId;
+
+    // 过滤出同一层级的元素并排序
+    const sameLevelElements = elements
+      .filter(el => el.parentId === parentId)
+      .sort((a, b) => a.zIndex - b.zIndex);
+
+    const newElements = [...elements];
+
+    switch (action) {
+      case 'front': {
+        const maxZ = Math.max(...sameLevelElements.map(el => el.zIndex), 0);
+        let count = 1;
+        ids.forEach(id => {
+          const idx = newElements.findIndex(el => el.id === id);
+          if (idx !== -1) newElements[idx] = { ...newElements[idx], zIndex: maxZ + count++ };
+        });
+        break;
+      }
+      case 'back': {
+        const minZ = Math.min(...sameLevelElements.map(el => el.zIndex), 0);
+        let count = 1;
+        // 保持 ids 的相对顺序，整体放到最下面
+        [...ids].reverse().forEach(id => {
+          const idx = newElements.findIndex(el => el.id === id);
+          if (idx !== -1) newElements[idx] = { ...newElements[idx], zIndex: minZ - count++ };
+        });
+        break;
+      }
+      case 'forward':
+      case 'backward': {
+        // 逐个交换位置 (简化实现: 整体移动)
+        // 这里为了简单，只处理单个元素的前后移动
+        if (ids.length !== 1) break;
+        const targetId = ids[0];
+        const currentIdx = sameLevelElements.findIndex(el => el.id === targetId);
+        const swapIdx = action === 'forward' ? currentIdx + 1 : currentIdx - 1;
+
+        if (swapIdx >= 0 && swapIdx < sameLevelElements.length) {
+          const swapElement = sameLevelElements[swapIdx];
+          const targetElement = sameLevelElements[currentIdx];
+
+          const idx1 = newElements.findIndex(el => el.id === targetElement.id);
+          const idx2 = newElements.findIndex(el => el.id === swapElement.id);
+
+          const tempZ = newElements[idx1].zIndex;
+          newElements[idx1] = { ...newElements[idx1], zIndex: newElements[idx2].zIndex };
+          newElements[idx2] = { ...newElements[idx2], zIndex: tempZ };
+        }
+        break;
+      }
+    }
+
+    set({ elements: newElements });
+  },
 
   // ========== 视口操作 ==========
 
@@ -149,12 +213,23 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
 
   addElement: (element) => {
     const id = generateId();
-    const maxZIndex = get().elements.reduce((max, el) => Math.max(max, el.zIndex), 0);
+    const { elements } = get();
+
+    // 如果是 Frame，默认放到最底层 (zIndex 最小)
+    // 如果是普通元素，放到最顶层 (zIndex 最大)
+    let zIndex;
+    if (element.type === 'frame') {
+      const minZIndex = elements.reduce((min, el) => Math.min(min, el.zIndex), 0);
+      zIndex = minZIndex - 1;
+    } else {
+      const maxZIndex = elements.reduce((max, el) => Math.max(max, el.zIndex), 0);
+      zIndex = maxZIndex + 1;
+    }
 
     set((state) => ({
       elements: [
         ...state.elements,
-        { ...element, id, zIndex: maxZIndex + 1 },
+        { ...element, id, zIndex },
       ],
     }));
 

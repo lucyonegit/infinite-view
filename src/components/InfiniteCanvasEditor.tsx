@@ -1,4 +1,4 @@
-import { useRef, useCallback, useState } from 'react';
+import { useRef, useCallback, useState, useEffect } from 'react';
 import InfiniteViewer from 'react-infinite-viewer';
 import { useCanvasStore } from '../store/canvasStore';
 import { Toolbar } from './Toolbar';
@@ -44,6 +44,8 @@ export function InfiniteCanvasEditor({ onBack }: InfiniteCanvasEditorProps) {
     findFrameAtPoint,
     setHoverFrame,
     hoverFrameId,
+    reorderElements,
+    deleteElements,
   } = useCanvasStore();
 
   // ============ 坐标转换 ============
@@ -265,6 +267,38 @@ export function InfiniteCanvasEditor({ onBack }: InfiniteCanvasEditorProps) {
       setZoom(newZoom);
     }
   }, [zoom]);
+
+  // ============ 键盘快捷键 ============
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // 如果正在输入，不触发快捷键
+      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      if (selectedIds.length > 0) {
+        if (e.key === '[' || e.key === '［') {
+          if (e.altKey) {
+            reorderElements(selectedIds, 'back');
+          } else {
+            reorderElements(selectedIds, 'backward');
+          }
+        } else if (e.key === ']' || e.key === '］') {
+          if (e.altKey) {
+            reorderElements(selectedIds, 'front');
+          } else {
+            reorderElements(selectedIds, 'forward');
+          }
+        } else if (e.key === 'Backspace' || e.key === 'Delete') {
+          deleteElements(selectedIds);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedIds, reorderElements, deleteElements]);
 
   const handleResetView = useCallback(() => {
     const viewer = viewerRef.current;
