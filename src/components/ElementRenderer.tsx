@@ -1,11 +1,11 @@
 import React, { memo, useState, useCallback } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import type { CanvasElement, ResizeHandle } from '../types/canvas';
-import { useCanvasStore } from '../store/canvasStore';
+import type { Element, ResizeHandle } from '../types/editor';
+import { useEditorStore } from '../store/editorStore';
 import './ElementRenderer.css';
 
 interface ElementRendererProps {
-  element: CanvasElement;
+  element: Element;
   isSelected: boolean;
   zoom: number;
   /** 是否作为 Frame 的子元素渲染 (使用相对坐标) */
@@ -60,7 +60,7 @@ const BasicElementRenderer = memo(function BasicElementRenderer({
   parentOffset = { x: 0, y: 0 },
 }: ElementRendererProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const updateElement = useCanvasStore(state => state.updateElement);
+  const updateElement = useEditorStore(state => state.updateElement);
 
   // 计算位置 (如果是子元素，使用相对坐标)
   const left = isChild ? element.x - parentOffset.x : element.x;
@@ -94,7 +94,7 @@ const BasicElementRenderer = memo(function BasicElementRenderer({
     setIsEditing(false);
   }, []);
 
-  const className = `canvas-element element-${element.type} ${isSelected ? 'selected' : ''} ${isEditing ? 'editing' : ''}`;
+  const className = `element element-${element.type} ${isSelected ? 'selected' : ''} ${isEditing ? 'editing' : ''}`;
 
   return (
     <div
@@ -123,11 +123,11 @@ const FrameRenderer = memo(function FrameRenderer({
   isChild = false,
   parentOffset = { x: 0, y: 0 },
 }: ElementRendererProps) {
-  const selectedIds = useCanvasStore(state => state.selectedIds);
-  const hoverFrameId = useCanvasStore(state => state.hoverFrameId);
+  const selectedIds = useEditorStore(state => state.selectedIds);
+  const hoverFrameId = useEditorStore(state => state.hoverFrameId);
   
   // 响应式获取 Frame 的子元素
-  const children = useCanvasStore(useShallow(state => 
+  const children = useEditorStore(useShallow(state => 
     state.elements.filter(el => el.parentId === element.id)
   ));
   
@@ -148,7 +148,7 @@ const FrameRenderer = memo(function FrameRenderer({
     ...getElementStyles(element),
   };
 
-  const className = `canvas-element element-frame ${isSelected ? 'selected' : ''} ${isHovered ? 'hovered' : ''}`;
+  const className = `element element-frame ${isSelected ? 'selected' : ''} ${isHovered ? 'hovered' : ''}`;
 
   return (
     <div
@@ -189,7 +189,7 @@ const FrameRenderer = memo(function FrameRenderer({
  * 根据元素类型渲染内容
  */
 function renderElementContent(
-  element: CanvasElement,
+  element: Element,
   isEditing: boolean,
   onTextChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void,
   onTextBlur: () => void
@@ -230,7 +230,7 @@ function renderElementContent(
 /**
  * 获取元素的 CSS 样式
  */
-function getElementStyles(element: CanvasElement): React.CSSProperties {
+function getElementStyles(element: Element): React.CSSProperties {
   const { style } = element;
   if (!style) return {};
 
@@ -249,7 +249,7 @@ function getElementStyles(element: CanvasElement): React.CSSProperties {
  * 缩放手柄组件
  */
 function ResizeHandles({ zoom }: { zoom: number }) {
-  const setInteraction = useCanvasStore(state => state.setInteraction);
+  const setInteraction = useEditorStore(state => state.setInteraction);
   const handles: ResizeHandle[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
 
   const handleMouseDown = useCallback((e: React.MouseEvent, handle: ResizeHandle) => {

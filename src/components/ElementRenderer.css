@@ -1,10 +1,12 @@
 /* 元素渲染器样式 */
 
-.canvas-element {
+.element {
   position: absolute;
   box-sizing: border-box;
   cursor: pointer;
   user-select: none;
+  /* 启用鼠标交互（覆盖父元素的 pointer-events: none）*/
+  pointer-events: auto;
   /* 性能优化: 提示浏览器这个元素会频繁变换 */
   will-change: transform, left, top;
   /* 禁用过渡动画以确保拖拽流畅 */
@@ -14,12 +16,12 @@
   box-shadow: none !important;
 }
 
-.canvas-element:hover:not(.selected):not(.editing) {
+.element:hover:not(.selected):not(.editing) {
   outline: 1.5px solid rgba(26, 115, 232, 0.4);
   outline-offset: -1.5px;
 }
 
-.canvas-element.selected:not(.editing) {
+.element.selected:not(.editing) {
   outline: 1.5px solid #1a73e8;
   outline-offset: -1.5px;
 }

@@ -1,15 +1,15 @@
 import { create } from 'zustand';
 import type {
-  CanvasState,
-  CanvasElement,
+  EditorState,
+  Element,
   ToolType,
   Viewport,
   InteractionState,
   Point,
   Bounds,
-  CanvasDataExport,
+  EditorDataExport,
   ElementType,
-} from '../types/canvas';
+} from '../types/editor';
 
 // ============ 初始状态 ============
 
@@ -35,7 +35,7 @@ function generateId(): string {
 
 // ============ Store 接口 ============
 
-interface CanvasStore extends CanvasState {
+interface EditorStore extends EditorState {
   // 视口操作
   setViewport: (viewport: Partial<Viewport>) => void;
   pan: (deltaX: number, deltaY: number) => void;
@@ -46,8 +46,8 @@ interface CanvasStore extends CanvasState {
   setActiveTool: (tool: ToolType) => void;
 
   // 元素操作
-  addElement: (element: Omit<CanvasElement, 'id' | 'zIndex'>) => string;
-  updateElement: (id: string, updates: Partial<CanvasElement>) => void;
+  addElement: (element: Omit<Element, 'id' | 'zIndex'>) => string;
+  updateElement: (id: string, updates: Partial<Element>) => void;
   deleteElements: (ids: string[]) => void;
   moveElements: (ids: string[], deltaX: number, deltaY: number) => void;
   resizeElement: (id: string, bounds: Bounds) => void;
@@ -55,8 +55,8 @@ interface CanvasStore extends CanvasState {
   // Frame 父子关系操作
   addToFrame: (elementId: string, frameId: string) => void;
   removeFromFrame: (elementId: string) => void;
-  getFrameChildren: (frameId: string) => CanvasElement[];
-  findFrameAtPoint: (x: number, y: number, excludeIds?: string[]) => CanvasElement | null;
+  getFrameChildren: (frameId: string) => Element[];
+  findFrameAtPoint: (x: number, y: number, excludeIds?: string[]) => Element | null;
   reorderElements: (ids: string[], action: 'front' | 'back' | 'forward' | 'backward') => void;
 
   // 选择操作
@@ -74,11 +74,11 @@ interface CanvasStore extends CanvasState {
   updateMarqueeSelect: (currentPoint: Point) => void;
   finishMarqueeSelect: () => void;
   startCreating: (type: ElementType, startPoint: Point) => void;
-  finishCreating: (endPoint: Point) => CanvasElement | null;
+  finishCreating: (endPoint: Point) => Element | null;
 
   // 数据导入导出 (持久化预留接口)
-  exportData: () => CanvasDataExport;
-  importData: (data: CanvasDataExport) => void;
+  exportData: () => EditorDataExport;
+  importData: (data: EditorDataExport) => void;
 
   // 悬停 Frame 状态 (拖动时实时检测)
   setHoverFrame: (frameId: string | null) => void;
@@ -86,7 +86,7 @@ interface CanvasStore extends CanvasState {
 
 // ============ 创建 Store ============
 
-export const useCanvasStore = create<CanvasStore>((set, get) => ({
+export const useEditorStore = create<EditorStore>((set, get) => ({
   // 初始状态
   viewport: initialViewport,
   activeTool: 'select',
@@ -489,7 +489,7 @@ export const useCanvasStore = create<CanvasStore>((set, get) => ({
       return null;
     }
 
-    const newElement: Omit<CanvasElement, 'id' | 'zIndex'> = {
+    const newElement: Omit<Element, 'id' | 'zIndex'> = {
       type: interaction.creatingType,
       x,
       y,

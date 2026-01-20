@@ -1,21 +1,21 @@
 import { useRef, useCallback, useState, useEffect } from 'react';
 import InfiniteViewer from 'react-infinite-viewer';
-import { useCanvasStore } from '../store/canvasStore';
+import { useEditorStore } from '../store/editorStore';
 import { Toolbar } from './Toolbar';
 import { ElementRenderer } from './ElementRenderer';
 import { exportSelectedFrameAsImage } from '../utils/exportUtils';
-import type { Point, Bounds } from '../types/canvas';
-import './InfiniteCanvasEditor.css';
+import type { Point, Bounds } from '../types/editor';
+import './InfiniteEditor.css';
 
-interface InfiniteCanvasEditorProps {
+interface InfiniteEditorProps {
   onBack?: () => void;
 }
 
 /**
- * 无限画布编辑器主组件
- * 使用 react-infinite-viewer 实现无限画布
+ * 无限视口编辑器主组件
+ * 使用 react-infinite-viewer 实现无限视口
  */
-export function InfiniteCanvasEditor({ onBack }: InfiniteCanvasEditorProps) {
+export function InfiniteEditor({ onBack }: InfiniteEditorProps) {
   const viewerRef = useRef<InfiniteViewer>(null);
   const [creatingPreview, setCreatingPreview] = useState<Bounds | null>(null);
   const [zoom, setZoom] = useState(1);
@@ -45,11 +45,11 @@ export function InfiniteCanvasEditor({ onBack }: InfiniteCanvasEditorProps) {
     hoverFrameId,
     reorderElements,
     deleteElements,
-  } = useCanvasStore();
+  } = useEditorStore();
 
   // ============ 坐标转换 ============
 
-  const screenToCanvas = useCallback((clientX: number, clientY: number): Point => {
+  const screenToWorld = useCallback((clientX: number, clientY: number): Point => {
     const viewer = viewerRef.current;
     if (!viewer) return { x: clientX, y: clientY };
 
@@ -61,8 +61,8 @@ export function InfiniteCanvasEditor({ onBack }: InfiniteCanvasEditorProps) {
 
     // 正确的坐标转换：
     // 1. clientX - rect.left 得到相对于容器的屏幕坐标
-    // 2. 除以 zoom 转换到画布坐标系
-    // 3. 加上滚动偏移（scrollLeft/scrollTop 已经是画布坐标，不需要再除以 zoom）
+    // 2. 除以 zoom 转换到世界坐标系
+    // 3. 加上滚动偏移（scrollLeft/scrollTop 已经是世界坐标，不需要再除以 zoom）
     return {
       x: (clientX - rect.left) / currentZoom + scrollLeft,
       y: (clientY - rect.top) / currentZoom + scrollTop,
@@ -71,7 +71,7 @@ export function InfiniteCanvasEditor({ onBack }: InfiniteCanvasEditorProps) {
 
   // ============ 缩放处理 ============
 
-  const handleResize = useCallback((canvasPoint: Point) => {
+  const handleResize = useCallback((worldPoint: Point) => {
     if (selectedIds.length !== 1 || !interaction.resizeHandle) return;
     
     const element = elements.find(el => el.id === selectedIds[0]);
@@ -82,38 +82,38 @@ export function InfiniteCanvasEditor({ onBack }: InfiniteCanvasEditorProps) {
 
     switch (handle) {
       case 'nw':
-        newBounds.width = element.x + element.width - canvasPoint.x;
-        newBounds.height = element.y + element.height - canvasPoint.y;
-        newBounds.x = canvasPoint.x;
-        newBounds.y = canvasPoint.y;
+        newBounds.width = element.x + element.width - worldPoint.x;
+        newBounds.height = element.y + element.height - worldPoint.y;
+        newBounds.x = worldPoint.x;
+        newBounds.y = worldPoint.y;
         break;
       case 'ne':
-        newBounds.width = canvasPoint.x - element.x;
-        newBounds.height = element.y + element.height - canvasPoint.y;
-        newBounds.y = canvasPoint.y;
+        newBounds.width = worldPoint.x - element.x;
+        newBounds.height = element.y + element.height - worldPoint.y;
+        newBounds.y = worldPoint.y;
         break;
       case 'sw':
-        newBounds.width = element.x + element.width - canvasPoint.x;
-        newBounds.height = canvasPoint.y - element.y;
-        newBounds.x = canvasPoint.x;
+        newBounds.width = element.x + element.width - worldPoint.x;
+        newBounds.height = worldPoint.y - element.y;
+        newBounds.x = worldPoint.x;
         break;
       case 'se':
-        newBounds.width = canvasPoint.x - element.x;
-        newBounds.height = canvasPoint.y - element.y;
+        newBounds.width = worldPoint.x - element.x;
+        newBounds.height = worldPoint.y - element.y;
         break;
       case 'n':
-        newBounds.height = element.y + element.height - canvasPoint.y;
-        newBounds.y = canvasPoint.y;
+        newBounds.height = element.y + element.height - worldPoint.y;
+        newBounds.y = worldPoint.y;
         break;
       case 's':
-        newBounds.height = canvasPoint.y - element.y;
+        newBounds.height = worldPoint.y - element.y;
         break;
       case 'w':
-        newBounds.width = element.x + element.width - canvasPoint.x;
-        newBounds.x = canvasPoint.x;
+        newBounds.width = element.x + element.width - worldPoint.x;
+        newBounds.x = worldPoint.x;
         break;
       case 'e':
-        newBounds.width = canvasPoint.x - element.x;
+        newBounds.width = worldPoint.x - element.x;
         break;
     }
 
@@ -127,7 +127,7 @@ export function InfiniteCanvasEditor({ onBack }: InfiniteCanvasEditorProps) {
   const handleViewportMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button !== 0) return;
     
-    const canvasPoint = screenToCanvas(e.clientX, e.clientY);
+    const worldPoint = screenToWorld(e.clientX, e.clientY);
 
     // 检查是否点击到元素
     const clickedElement = (e.target as HTMLElement).closest('[data-element-id]');
@@ -142,12 +142,12 @@ export function InfiniteCanvasEditor({ onBack }: InfiniteCanvasEditorProps) {
           if (!selectedIds.includes(clickedElementId)) {
             selectElements([clickedElementId], e.shiftKey);
           }
-          startDragging(canvasPoint);
+          startDragging(worldPoint);
         } else {
           if (!e.shiftKey) {
             deselectAll();
           }
-          startMarqueeSelect(canvasPoint);
+          startMarqueeSelect(worldPoint);
         }
         break;
 
@@ -156,20 +156,20 @@ export function InfiniteCanvasEditor({ onBack }: InfiniteCanvasEditorProps) {
       case 'frame':
         startCreating(
           activeTool === 'text' ? 'text' : activeTool === 'frame' ? 'frame' : 'rectangle',
-          canvasPoint
+          worldPoint
         );
         break;
     }
-  }, [activeTool, selectedIds, screenToCanvas, selectElements, deselectAll, startDragging, startMarqueeSelect, startCreating]);
+  }, [activeTool, selectedIds, screenToWorld, selectElements, deselectAll, startDragging, startMarqueeSelect, startCreating]);
 
   const handleViewportMouseMove = useCallback((e: React.MouseEvent) => {
-    const canvasPoint = screenToCanvas(e.clientX, e.clientY);
+    const worldPoint = screenToWorld(e.clientX, e.clientY);
 
     if (interaction.isDragging && interaction.startPoint) {
-      const deltaX = canvasPoint.x - interaction.startPoint.x;
-      const deltaY = canvasPoint.y - interaction.startPoint.y;
+      const deltaX = worldPoint.x - interaction.startPoint.x;
+      const deltaY = worldPoint.y - interaction.startPoint.y;
       moveElements(selectedIds, deltaX, deltaY);
-      setInteraction({ startPoint: canvasPoint });
+      setInteraction({ startPoint: worldPoint });
 
       // 实时计算是否进入了某个 Frame
       if (selectedIds.length > 0) {
@@ -179,8 +179,8 @@ export function InfiniteCanvasEditor({ onBack }: InfiniteCanvasEditorProps) {
         
         if (element && element.type !== 'frame') {
           // 使用鼠标当前坐标进行检测，或者使用元素中心点
-          // 根据需求 "鼠标进入frame" -> 用 canvasPoint
-          const targetFrame = findFrameAtPoint(canvasPoint.x, canvasPoint.y, selectedIds);
+          // 根据需求 "鼠标进入frame" -> 用 worldPoint
+          const targetFrame = findFrameAtPoint(worldPoint.x, worldPoint.y, selectedIds);
           
           if (targetFrame) {
             if (hoverFrameId !== targetFrame.id) {
@@ -200,20 +200,20 @@ export function InfiniteCanvasEditor({ onBack }: InfiniteCanvasEditorProps) {
         }
       }
     } else if (interaction.isMarqueeSelecting) {
-      updateMarqueeSelect(canvasPoint);
+      updateMarqueeSelect(worldPoint);
     } else if (interaction.isCreating && interaction.startPoint) {
-      const x = Math.min(interaction.startPoint.x, canvasPoint.x);
-      const y = Math.min(interaction.startPoint.y, canvasPoint.y);
-      const width = Math.abs(canvasPoint.x - interaction.startPoint.x);
-      const height = Math.abs(canvasPoint.y - interaction.startPoint.y);
+      const x = Math.min(interaction.startPoint.x, worldPoint.x);
+      const y = Math.min(interaction.startPoint.y, worldPoint.y);
+      const width = Math.abs(worldPoint.x - interaction.startPoint.x);
+      const height = Math.abs(worldPoint.y - interaction.startPoint.y);
       setCreatingPreview({ x, y, width, height });
     } else if (interaction.isResizing && interaction.startPoint && interaction.resizeHandle) {
-      handleResize(canvasPoint);
+      handleResize(worldPoint);
     }
-  }, [interaction, screenToCanvas, moveElements, selectedIds, updateMarqueeSelect, setInteraction, handleResize, elements, findFrameAtPoint, hoverFrameId, setHoverFrame, addToFrame, removeFromFrame]);
+  }, [interaction, screenToWorld, moveElements, selectedIds, updateMarqueeSelect, setInteraction, handleResize, elements, findFrameAtPoint, hoverFrameId, setHoverFrame, addToFrame, removeFromFrame]);
 
   const handleViewportMouseUp = useCallback((e: React.MouseEvent) => {
-    const canvasPoint = screenToCanvas(e.clientX, e.clientY);
+    const worldPoint = screenToWorld(e.clientX, e.clientY);
 
     if (interaction.isDragging) {
       // 停止拖拽时重置 hover 状态
@@ -222,12 +222,12 @@ export function InfiniteCanvasEditor({ onBack }: InfiniteCanvasEditorProps) {
     } else if (interaction.isMarqueeSelecting) {
       finishMarqueeSelect();
     } else if (interaction.isCreating) {
-      finishCreating(canvasPoint);
+      finishCreating(worldPoint);
       setCreatingPreview(null);
     } else if (interaction.isResizing) {
       setInteraction({ isResizing: false, resizeHandle: undefined, startPoint: undefined });
     }
-  }, [interaction, screenToCanvas, stopDragging, finishMarqueeSelect, finishCreating, setInteraction, setHoverFrame]);
+  }, [interaction, screenToWorld, stopDragging, finishMarqueeSelect, finishCreating, setInteraction, setHoverFrame]);
 
   // ============ InfiniteViewer 事件 ============
 
@@ -324,7 +324,7 @@ export function InfiniteCanvasEditor({ onBack }: InfiniteCanvasEditorProps) {
   const useMouseDrag = activeTool === 'hand';
 
   return (
-    <div className="infinite-canvas-editor">
+    <div className="infinite-editor">
       {/* 头部 */}
       <header className="editor-header">
         <div className="editor-header-left">
@@ -360,10 +360,10 @@ export function InfiniteCanvasEditor({ onBack }: InfiniteCanvasEditorProps) {
       {/* 工具栏 */}
       <Toolbar />
 
-      {/* InfiniteViewer 画布 */}
+      {/* InfiniteViewer 视口 */}
       <InfiniteViewer
         ref={viewerRef}
-        className={`canvas-viewer ${activeTool === 'hand' ? 'tool-hand' : `tool-${activeTool}`}`}
+        className={`editor-viewer ${activeTool === 'hand' ? 'tool-hand' : `tool-${activeTool}`}`}
         zoom={zoom}
         useMouseDrag={useMouseDrag}
         useWheelScroll={true}
@@ -377,17 +377,17 @@ export function InfiniteCanvasEditor({ onBack }: InfiniteCanvasEditorProps) {
         onPinch={handlePinch}
       >
         <div
-          className="canvas-viewport"
+          className="editor-viewport"
           onMouseDown={handleViewportMouseDown}
           onMouseMove={handleViewportMouseMove}
           onMouseUp={handleViewportMouseUp}
           onMouseLeave={handleViewportMouseUp}
         >
           {/* 网格背景 */}
-          <div className="canvas-grid-bg" />
+          <div className="grid-background" />
 
           {/* 元素层 */}
-          <div className="canvas-elements-layer">
+          <div className="elements-layer">
             {elements
               .filter(el => !el.parentId) // 只在该层级渲染顶层元素
               .map((element) => (
@@ -462,4 +462,4 @@ export function InfiniteCanvasEditor({ onBack }: InfiniteCanvasEditorProps) {
   );
 }
 
-export default InfiniteCanvasEditor;
+export default InfiniteEditor;

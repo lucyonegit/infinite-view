@@ -1,5 +1,5 @@
-import { useCanvasStore } from '../store/canvasStore';
-import type { ToolType } from '../types/canvas';
+import { useEditorStore } from '../store/editorStore';
+import type { ToolType } from '../types/editor';
 import './Toolbar.css';
 
 interface ToolConfig {
@@ -23,7 +23,7 @@ export function Toolbar() {
     selectedIds, 
     reorderElements,
     deleteElements 
-  } = useCanvasStore();
+  } = useEditorStore();
 
   const handleReorder = (action: 'front' | 'back' | 'forward' | 'backward') => {
     reorderElements(selectedIds, action);

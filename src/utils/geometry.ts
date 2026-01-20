@@ -2,18 +2,18 @@
  * 几何计算和坐标变换工具
  */
 
-import type { Point, Bounds, Viewport } from '../types/canvas';
+import type { Point, Bounds, Viewport } from '../types/editor';
 
 // ============ 坐标变换 ============
 
 /**
- * 屏幕坐标转画布坐标
+ * 屏幕坐标转世界坐标
  * @param screenX 屏幕 X 坐标
  * @param screenY 屏幕 Y 坐标
  * @param viewport 视口状态
- * @returns 画布坐标
+ * @returns 世界坐标
  */
-export function screenToCanvas(
+export function screenToWorld(
   screenX: number,
   screenY: number,
   viewport: Viewport
@@ -25,20 +25,20 @@ export function screenToCanvas(
 }
 
 /**
- * 画布坐标转屏幕坐标
- * @param canvasX 画布 X 坐标
- * @param canvasY 画布 Y 坐标
+ * 世界坐标转屏幕坐标
+ * @param worldX 世界 X 坐标
+ * @param worldY 世界 Y 坐标
  * @param viewport 视口状态
  * @returns 屏幕坐标
  */
-export function canvasToScreen(
-  canvasX: number,
-  canvasY: number,
+export function worldToScreen(
+  worldX: number,
+  worldY: number,
   viewport: Viewport
 ): Point {
   return {
-    x: canvasX * viewport.zoom + viewport.x,
-    y: canvasY * viewport.zoom + viewport.y,
+    x: worldX * viewport.zoom + viewport.x,
+    y: worldY * viewport.zoom + viewport.y,
   };
 }
 

@@ -1,5 +1,5 @@
 /**
- * 画布类型定义
+ * 编辑器类型定义
  */
 
 // ============ 基础类型 ============
@@ -24,9 +24,9 @@ export interface Bounds {
 // ============ 视口状态 ============
 
 export interface Viewport {
-  /** 画布偏移 X (屏幕像素) */
+  /** 视口偏移 X (屏幕像素) */
   x: number;
-  /** 画布偏移 Y (屏幕像素) */
+  /** 视口偏移 Y (屏幕像素) */
   y: number;
   /** 缩放级别 */
   zoom: number;
@@ -51,7 +51,7 @@ export interface ElementStyle {
   textAlign?: 'left' | 'center' | 'right';
 }
 
-export interface CanvasElement {
+export interface Element {
   id: string;
   type: ElementType;
   /** 元素名称 */
@@ -80,7 +80,7 @@ export type ResizeHandle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
 export interface InteractionState {
   /** 是否正在拖拽元素 */
   isDragging: boolean;
-  /** 是否正在平移画布 */
+  /** 是否正在平移视口 */
   isPanning: boolean;
   /** 是否正在缩放元素 */
   isResizing: boolean;
@@ -92,28 +92,28 @@ export interface InteractionState {
   startPoint?: Point;
   /** 当前缩放手柄 */
   resizeHandle?: ResizeHandle;
-  /** 框选区域 (画布坐标) */
+  /** 框选区域 (世界坐标) */
   marqueeRect?: Bounds;
   /** 正在创建的元素类型 */
   creatingType?: ElementType;
 }
 
-// ============ 画布状态 ============
+// ============ 编辑器状态 ============
 
-export interface CanvasState {
+export interface EditorState {
   viewport: Viewport;
   activeTool: ToolType;
-  elements: CanvasElement[];
+  elements: Element[];
   selectedIds: string[];
   interaction: InteractionState;
   /** 拖动时悬停的 Frame ID */
   hoverFrameId: string | null;
 }
 
-// ============ 画布操作接口 (用于持久化预留) ============
+// ============ 数据导出接口 (用于持久化预留) ============
 
-export interface CanvasDataExport {
+export interface EditorDataExport {
   version: string;
   viewport: Viewport;
-  elements: CanvasElement[];
+  elements: Element[];
 }

@@ -1,8 +1,8 @@
 /**
- * 导出工具 - 将 Frame 或整个画布导出为图片
+ * 导出工具 - 将 Frame 或整个视口导出为图片
  */
 
-import type { CanvasElement } from '../types/canvas';
+import type { Element } from '../types/editor';
 
 /**
  * 导出单个 Frame 为图片
@@ -12,8 +12,8 @@ import type { CanvasElement } from '../types/canvas';
  * @returns Promise<Blob>
  */
 export async function exportFrameAsImage(
-  frameElement: CanvasElement,
-  allElements: CanvasElement[],
+  frameElement: Element,
+  allElements: Element[],
   scale: number = 2
 ): Promise<Blob> {
   // 获取 Frame 的子元素
@@ -54,7 +54,7 @@ export async function exportFrameAsImage(
  */
 async function renderElementToCanvas(
   ctx: CanvasRenderingContext2D,
-  element: CanvasElement,
+  element: Element,
   offsetX: number,
   offsetY: number
 ): Promise<void> {
@@ -185,7 +185,7 @@ export function downloadBlob(blob: Blob, filename: string): void {
  */
 export async function exportSelectedFrameAsImage(
   selectedId: string,
-  elements: CanvasElement[],
+  elements: Element[],
   scale: number = 2
 ): Promise<void> {
   const frame = elements.find(el => el.id === selectedId && el.type === 'frame');

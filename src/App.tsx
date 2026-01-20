@@ -1,10 +1,10 @@
-import InfiniteCanvasEditor from "./components/InfiniteCanvasEditor";
+import InfiniteEditor from "./components/InfiniteEditor";
 import "./App.css";
 
 function App() {
   return (
     <div className="app-main">
-      <InfiniteCanvasEditor />
+      <InfiniteEditor />
     </div>
   );
 }
