@@ -1,0 +1,119 @@
+/**
+ * 画布类型定义
+ */
+
+// ============ 基础类型 ============
+
+export interface Point {
+  x: number;
+  y: number;
+}
+
+export interface Size {
+  width: number;
+  height: number;
+}
+
+export interface Bounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+// ============ 视口状态 ============
+
+export interface Viewport {
+  /** 画布偏移 X (屏幕像素) */
+  x: number;
+  /** 画布偏移 Y (屏幕像素) */
+  y: number;
+  /** 缩放级别 */
+  zoom: number;
+}
+
+// ============ 工具类型 ============
+
+export type ToolType = 'select' | 'hand' | 'rectangle' | 'text' | 'frame';
+
+// ============ 元素类型 ============
+
+export type ElementType = 'rectangle' | 'text' | 'image' | 'frame';
+
+export interface ElementStyle {
+  fill?: string;
+  stroke?: string;
+  strokeWidth?: number;
+  borderRadius?: number;
+  opacity?: number;
+  fontSize?: number;
+  fontFamily?: string;
+  textAlign?: 'left' | 'center' | 'right';
+}
+
+export interface CanvasElement {
+  id: string;
+  type: ElementType;
+  /** 元素名称 */
+  name?: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation?: number;
+  style?: ElementStyle;
+  content?: string;      // 文本内容
+  imageUrl?: string;     // 图片URL
+  /** 父元素 ID (用于 Frame 包含关系) */
+  parentId?: string;
+  /** Frame 的子元素 ID 列表 */
+  children?: string[];
+  zIndex: number;
+  locked?: boolean;      // 是否锁定
+  visible?: boolean;     // 是否可见
+}
+
+// ============ 交互状态 ============
+
+export type ResizeHandle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
+
+export interface InteractionState {
+  /** 是否正在拖拽元素 */
+  isDragging: boolean;
+  /** 是否正在平移画布 */
+  isPanning: boolean;
+  /** 是否正在缩放元素 */
+  isResizing: boolean;
+  /** 是否正在框选 */
+  isMarqueeSelecting: boolean;
+  /** 是否正在创建元素 */
+  isCreating: boolean;
+  /** 拖拽/操作起始点 (屏幕坐标) */
+  startPoint?: Point;
+  /** 当前缩放手柄 */
+  resizeHandle?: ResizeHandle;
+  /** 框选区域 (画布坐标) */
+  marqueeRect?: Bounds;
+  /** 正在创建的元素类型 */
+  creatingType?: ElementType;
+}
+
+// ============ 画布状态 ============
+
+export interface CanvasState {
+  viewport: Viewport;
+  activeTool: ToolType;
+  elements: CanvasElement[];
+  selectedIds: string[];
+  interaction: InteractionState;
+  /** 拖动时悬停的 Frame ID */
+  hoverFrameId: string | null;
+}
+
+// ============ 画布操作接口 (用于持久化预留) ============
+
+export interface CanvasDataExport {
+  version: string;
+  viewport: Viewport;
+  elements: CanvasElement[];
+}

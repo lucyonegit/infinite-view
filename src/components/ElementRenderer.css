@@ -1,0 +1,208 @@
+/* 元素渲染器样式 */
+
+.canvas-element {
+  position: absolute;
+  box-sizing: border-box;
+  cursor: pointer;
+  user-select: none;
+  /* 性能优化: 提示浏览器这个元素会频繁变换 */
+  will-change: transform, left, top;
+  /* 禁用过渡动画以确保拖拽流畅 */
+  transition: none !important;
+}
+
+.canvas-element:hover {
+  outline: 2px solid rgba(26, 115, 232, 0.5);
+  outline-offset: -2px;
+}
+
+.canvas-element.selected {
+  outline: 2px solid #1a73e8;
+  outline-offset: -2px;
+}
+
+/* 矩形元素 */
+.element-rectangle {
+  background: #ffffff;
+  border-radius: 8px;
+  /* 使用更简单的阴影以提高性能 */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+/* Frame 元素 */
+.element-frame {
+  background: rgba(255, 255, 255, 0.5);
+  border: 2px dashed #999999;
+  border-radius: 4px;
+  /* 裁切超出的子元素 */
+  overflow: hidden;
+}
+
+.element-frame.selected {
+  border-style: solid;
+  border-color: #1a73e8;
+}
+
+.element-frame.hovered {
+  border-style: solid;
+  border-color: #1a73e8;
+  background: rgba(26, 115, 232, 0.1);
+  box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+}
+
+/* Frame 标题 */
+.frame-label {
+  position: absolute;
+  top: -24px;
+  left: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: #666;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.element-frame.selected .frame-label {
+  color: #1a73e8;
+}
+
+/* Frame 子元素容器 */
+.frame-children {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+/* 文本元素 */
+.element-text {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  font-size: 16px;
+  color: #333;
+  min-width: 50px;
+  min-height: 24px;
+}
+
+.element-text.editing {
+  cursor: text;
+}
+
+.element-text textarea {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background: transparent;
+  resize: none;
+  outline: none;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+}
+
+/* 图片元素 */
+.element-image {
+  overflow: hidden;
+  border-radius: 8px;
+}
+
+.element-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 选择框 */
+.selection-box {
+  position: absolute;
+  border: 1px solid #1a73e8;
+  background: rgba(26, 115, 232, 0.1);
+  pointer-events: none;
+  z-index: 1000;
+}
+
+/* 框选区域 */
+.marquee-selection {
+  position: absolute;
+  border: 1px dashed #1a73e8;
+  background: rgba(26, 115, 232, 0.05);
+  pointer-events: none;
+  z-index: 999;
+}
+
+/* 缩放手柄 */
+.resize-handles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.resize-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: #ffffff;
+  border: 2px solid #1a73e8;
+  border-radius: 50%;
+  pointer-events: auto;
+  transform: translate(-50%, -50%);
+}
+
+.resize-handle.nw {
+  top: 0;
+  left: 0;
+  cursor: nwse-resize;
+}
+.resize-handle.n {
+  top: 0;
+  left: 50%;
+  cursor: ns-resize;
+}
+.resize-handle.ne {
+  top: 0;
+  left: 100%;
+  cursor: nesw-resize;
+}
+.resize-handle.e {
+  top: 50%;
+  left: 100%;
+  cursor: ew-resize;
+}
+.resize-handle.se {
+  top: 100%;
+  left: 100%;
+  cursor: nwse-resize;
+}
+.resize-handle.s {
+  top: 100%;
+  left: 50%;
+  cursor: ns-resize;
+}
+.resize-handle.sw {
+  top: 100%;
+  left: 0;
+  cursor: nesw-resize;
+}
+.resize-handle.w {
+  top: 50%;
+  left: 0;
+  cursor: ew-resize;
+}
+
+.resize-handle:hover {
+  background: #1a73e8;
+}
+
+/* 组合选择边框 */
+.group-selection-box {
+  position: absolute;
+  border: 2px solid #1a73e8;
+  background: transparent;
+  pointer-events: none;
+  z-index: 998;
+}
