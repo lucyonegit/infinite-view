@@ -496,7 +496,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       width,
       height,
       style: {
-        fill: '#ffffff',
+        fill: interaction.creatingType === 'frame' ? 'rgba(255, 255, 255, 1)' : '#c9c9c9ff',
         stroke: interaction.creatingType === 'frame' ? '#e0e0e0' : undefined,
         strokeWidth: 1,
         borderRadius: 2,

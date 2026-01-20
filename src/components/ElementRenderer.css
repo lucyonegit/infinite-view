@@ -28,7 +28,7 @@
 
 /* 矩形元素 */
 .element-rectangle {
-  background: #ffffff;
+  background: #00ffff;
 }
 
 /* Frame 元素 */
@@ -53,7 +53,7 @@
   position: absolute;
   top: -22px;
   left: 0;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 600;
   color: #999;
   display: flex;
