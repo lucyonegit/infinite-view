@@ -50,9 +50,9 @@
 /* Frame 标题 */
 .frame-label {
   position: absolute;
-  top: -22px;
+  top: -30px;
   left: 0;
-  font-size: 14px;
+  font-size: 18px;
   font-weight: 600;
   color: #999;
   display: flex;

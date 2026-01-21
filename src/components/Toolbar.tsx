@@ -17,12 +17,13 @@ const TOOLS: ToolConfig[] = [
 ];
 
 export function Toolbar() {
-  const { 
-    activeTool, 
-    setActiveTool, 
-    selectedIds, 
+  const {
+    activeTool,
+    setActiveTool,
+    selectedIds,
     reorderElements,
-    deleteElements 
+    deleteElements,
+    addImage
   } = useEditorStore();
 
   const handleReorder = (action: 'front' | 'back' | 'forward' | 'backward') => {
@@ -47,6 +48,15 @@ export function Toolbar() {
           </button>
         </div>
       ))}
+
+      <div className="toolbar-divider" />
+      <button
+        className="toolbar-btn"
+        onClick={() => addImage()}
+        data-tooltip="Add Image"
+      >
+        🖼️
+      </button>
 
       {selectedIds.length > 0 && (
         <>

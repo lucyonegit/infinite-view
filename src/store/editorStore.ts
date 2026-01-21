@@ -47,6 +47,7 @@ interface EditorStore extends EditorState {
 
   // 元素操作
   addElement: (element: Omit<Element, 'id' | 'zIndex'>) => string;
+  addImage: () => string;
   updateElement: (id: string, updates: Partial<Element>) => void;
   deleteElements: (ids: string[]) => void;
   moveElements: (ids: string[], deltaX: number, deltaY: number) => void;
@@ -254,6 +255,53 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
         { ...element, id, zIndex },
       ],
     }));
+
+    return id;
+  },
+
+  addImage: () => {
+    const { elements, addElement } = get();
+    const images = elements.filter(el => el.type === 'image');
+
+    const gap = 20;
+    const maxWidth = 3000;
+    const imgWidth = Math.floor(Math.random() * (800 - 200 + 1)) + 200;
+    const imgHeight = Math.floor(Math.random() * (450 - 150 + 1)) + 150;
+
+    let nextX = 0;
+    let nextY = 0;
+
+    if (images.length > 0) {
+      // Find the "last" image to determine the next position
+      // We sort by y then x to find the visually last one in the flow
+      const sortedImages = [...images].sort((a, b) => {
+        if (Math.abs(a.y - b.y) < 1) return b.x - a.x; // Same row (roughly), sort by x descending
+        return b.y - a.y; // Sort by y descending
+      });
+
+      const lastImg = sortedImages[0];
+      nextX = lastImg.x + lastImg.width + gap;
+      nextY = lastImg.y;
+
+      if (nextX + imgWidth > maxWidth) {
+        nextX = 0;
+        nextY = lastImg.y + lastImg.height + gap;
+      }
+    }
+
+    const id = addElement({
+      type: 'image',
+      x: nextX,
+      y: nextY,
+      width: imgWidth,
+      height: imgHeight,
+      imageUrl: `https://picsum.photos/seed/${Date.now()}/${imgWidth}/${imgHeight}`,
+      style: {
+        borderRadius: 4,
+        fill: '#f0f0f0',
+      },
+      name: `Image ${images.length + 1}`,
+    });
 
     return id;
   },
