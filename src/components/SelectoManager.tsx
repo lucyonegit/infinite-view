@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import Selecto, { type OnSelect, type OnSelectEnd } from 'react-selecto';
 import { useEditorStore } from '../store/editorStore';
 
@@ -7,6 +8,7 @@ import { useEditorStore } from '../store/editorStore';
  */
 export function SelectoManager() {
   const { selectElements, activeTool, deselectAll, interaction } = useEditorStore();
+  const isDragStartOnElement = useRef(false);
 
   // 只有在选择工具下才启用 Selecto
   const enabled = activeTool === 'select';
@@ -37,8 +39,10 @@ export function SelectoManager() {
       return;
     }
 
-    // 如果点击的是已经选中的元素，且未按 shift，则交给 Moveable 拖动
+    // 记录是否点击在元素上，用于在 onSelect 中决定是否触发立即拖拽
     const elementId = target.closest('.element')?.getAttribute('data-element-id');
+    isDragStartOnElement.current = !!elementId;
+
     const { selectedIds } = useEditorStore.getState();
     if (elementId && selectedIds.includes(elementId) && !e.inputEvent.shiftKey) {
       console.log('Selecto: stopped for dragging selected element');
@@ -48,14 +52,16 @@ export function SelectoManager() {
   };
 
   const onSelect = (e: OnSelect) => {
-    console.log('Selecto: onSelect', e.selected.length);
+    console.log('Selecto: onSelect', e.selected.length, 'isDragStartOnElement:', isDragStartOnElement.current);
     const newSelectedIds = e.selected
       .map((el) => (el as HTMLElement | SVGElement).getAttribute('data-element-id'))
       .filter(Boolean) as string[];
     
     if (e.added.length || e.removed.length) {
-      // 传递 inputEvent 给 selectedIds，以便 MoveableManager 能够立即接管拖拽
-      selectElements(newSelectedIds, e.inputEvent.shiftKey, e.inputEvent);
+      // 只有当拖拽是从元素开始的（点击选择/点击拖拽）时，才传递 inputEvent 以便 Moveable 立即接管
+      // 如果是框选过程冲碰到了元素，不要传递 event，避免 Moveable 夺取拖拽控制权
+      const eventToPass = isDragStartOnElement.current ? e.inputEvent : undefined;
+      selectElements(newSelectedIds, e.inputEvent.shiftKey, eventToPass);
     } else {
       console.log('Selecto: onSelect - no elements added or removed, skipping selectElements');
     }

@@ -1,7 +1,8 @@
 import { useRef, useEffect, useMemo, useCallback, memo, useState, useLayoutEffect } from 'react';
 import Moveable, { type OnDrag, type OnResize, type OnDragGroup, type OnResizeGroup } from 'react-moveable';
 import { useEditorStore } from '../store/editorStore';
-import type { Element, Point } from '../types/editor';
+import { useCoordinateSystem } from '../hooks/useCoordinateSystem';
+import type { Element } from '../types/editor';
 
 interface MoveableManagerProps {
   /** 当前缩放级别 */
@@ -89,21 +90,8 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
     }
   }, [selectedIds, elements]);
 
-  /** 将屏幕坐标转换为世界坐标 */
-  const screenToWorld = useCallback((clientX: number, clientY: number): Point => {
-    // 获取 .editor-viewer 的边界作为基准
-    const container = document.querySelector('.editor-viewer');
-    if (!container) return { x: clientX, y: clientY };
-    
-    const rect = container.getBoundingClientRect();
-    
-    // 世界坐标 = (屏幕坐标 - Container偏移) / zoom + scroll
-    // store.viewport.x = -scrollLeft
-    return {
-      x: (clientX - rect.left) / zoom - viewport.x,
-      y: (clientY - rect.top) / zoom - viewport.y,
-    };
-  }, [zoom, viewport.x, viewport.y]);
+  // 使用 Hook 获取坐标转换函数
+  const { screenToWorld } = useCoordinateSystem(zoom, viewport.x, viewport.y);
 
   const checkFrameHover = useCallback((id: string, mouseWorldX: number, mouseWorldY: number) => {
     const element = elements.find(el => el.id === id);
