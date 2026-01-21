@@ -156,9 +156,21 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
 
   const handleResize = ({ target, width, height, drag }: OnResize) => {
     // 使用 CSS transform 直接操作 DOM，避免 React 重新渲染
-    target.style.width = `${width}px`;
-    target.style.height = `${height}px`;
+    const newWidth = Math.floor(width);
+    const newHeight = Math.floor(height);
+    target.style.width = `${newWidth}px`;
+    target.style.height = `${newHeight}px`;
     target.style.transform = `translate(${drag.beforeTranslate[0]}px, ${drag.beforeTranslate[1]}px)`;
+    const id = target.getAttribute('data-element-id');
+    if (!id) return;
+    const element = elements.find(el => el.id === id);
+    if (!element) return;
+    updateElement(id, {
+      x: element.x + drag.beforeTranslate[0],
+      y: element.y + drag.beforeTranslate[1],
+      width: newWidth,
+      height: newHeight,
+    });
   };
 
   const handleResizeEnd = ({ target }: { target: HTMLElement | SVGElement }) => {
@@ -177,8 +189,8 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
         updateElement(id, {
           x: element.x + matrix.m41,
           y: element.y + matrix.m42,
-          width: parseFloat(target.style.width),
-          height: parseFloat(target.style.height),
+          width: Math.floor(parseInt(target.style.width)),
+          height: Math.floor(parseInt(target.style.height)),
         });
 
         // 清除 transform（位置已提交到 store）
@@ -210,13 +222,15 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
     events.forEach(({ target, width, height, drag }) => {
       const id = target.getAttribute('data-element-id');
       if (id) {
+        const newWidth = Math.floor(width);
+        const newHeight = Math.floor(height);
         const element = elements.find(el => el.id === id);
         if (element) {
           updateElement(id, {
             x: drag.left,
             y: drag.top,
-            width,
-            height,
+            width: newWidth,
+            height: newHeight,
           });
         }
       }

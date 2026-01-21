@@ -59,7 +59,6 @@
   align-items: center;
   gap: 4px;
   white-space: nowrap;
-  white-space: nowrap;
   pointer-events: none;
   z-index: 10;
   text-transform: capitalize;
