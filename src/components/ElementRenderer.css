@@ -59,9 +59,27 @@
   align-items: center;
   gap: 4px;
   white-space: nowrap;
+  white-space: nowrap;
   pointer-events: none;
   z-index: 10;
   text-transform: capitalize;
+}
+
+.frame-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  cursor: grab;
+  color: #666;
+  pointer-events: auto; /* Allow dragging */
+}
+
+.frame-drag-handle:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #333;
 }
 
 .frame-icon {
