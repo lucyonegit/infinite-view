@@ -28,6 +28,7 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
     hoverFrameId,
     viewport,
     setInteraction,
+    consumeSelectionEvent,
   } = useEditorStore();
 
   // 1. 建立一个“层级键”，仅在选中元素的父节点发生变化时更新
@@ -51,19 +52,29 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
     
     setTargets(nextTargets);
 
-    // 如果当前正在拖拽中，需要恢复拖拽会话
-    if (lastEvent.current && moveableRef.current && nextTargets.length > 0) {
+    // 检查是否有来自 Selecto 的立即拖拽事件
+    const selectionEvent = consumeSelectionEvent();
+    if (selectionEvent && nextTargets.length > 0) {
       // 必须确保 Moveable 已经收到了新的 targets 属性
-      // 使用 requestAnimationFrame 保证在下一帧（Moveable 渲染后）恢复
+      // 使用 requestAnimationFrame 保证在下一帧（Moveable 渲染后）立即开始拖拽
+      requestAnimationFrame(() => {
+        if (moveableRef.current) {
+          moveableRef.current.dragStart(selectionEvent);
+        }
+      });
+    }
+
+    // 如果当前正在拖拽中（这是用于处理 React 重新渲染导致的重连，不同于上面的首次点击拖拽），需要恢复拖拽会话
+    if (lastEvent.current && moveableRef.current && nextTargets.length > 0) {
       requestAnimationFrame(() => {
         if (moveableRef.current && lastEvent.current) {
           moveableRef.current.dragStart(lastEvent.current);
-          moveableRef.current.updateTarget();
+          moveableRef.current.updateRect();
         }
       });
     }
      
-  }, [nestingKey, selectedIds]); // 当层级结构（ParentID）变化时触发
+  }, [nestingKey, selectedIds, consumeSelectionEvent]); // 当层级结构（ParentID）变化时触发
 
   const elementGuidelines = useMemo(() => {
     return elements
@@ -74,7 +85,7 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
 
   useEffect(() => {
     if (moveableRef.current) {
-      moveableRef.current.updateTarget();
+      moveableRef.current.updateRect();
     }
   }, [selectedIds, elements]);
 

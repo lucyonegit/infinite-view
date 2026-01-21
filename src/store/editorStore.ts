@@ -61,7 +61,8 @@ interface EditorStore extends EditorState {
   reorderElements: (ids: string[], action: 'front' | 'back' | 'forward' | 'backward') => void;
 
   // 选择操作
-  selectElements: (ids: string[], additive?: boolean) => void;
+  selectElements: (ids: string[], additive?: boolean, event?: MouseEvent | TouchEvent) => void;
+  consumeSelectionEvent: () => MouseEvent | TouchEvent | null;
   selectAll: () => void;
   deselectAll: () => void;
 
@@ -98,6 +99,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   selectedIds: [],
   interaction: initialInteraction,
   hoverFrameId: null,
+  lastSelectionEvent: null,
 
   // ========== 辅助逻辑 ==========
 
@@ -425,22 +427,32 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
 
   // ========== 选择操作 ==========
 
-  selectElements: (ids, additive = false) => {
+  selectElements: (ids, additive = false, event) => {
     set((state) => ({
       selectedIds: additive
         ? [...new Set([...state.selectedIds, ...ids])]
         : ids,
+      lastSelectionEvent: event || null,
     }));
+  },
+
+  consumeSelectionEvent: () => {
+    const { lastSelectionEvent } = get();
+    if (lastSelectionEvent) {
+      set({ lastSelectionEvent: null });
+    }
+    return lastSelectionEvent;
   },
 
   selectAll: () => {
     set((state) => ({
       selectedIds: state.elements.map((el) => el.id),
+      lastSelectionEvent: null,
     }));
   },
 
   deselectAll: () => {
-    set({ selectedIds: [] });
+    set({ selectedIds: [], lastSelectionEvent: null });
   },
 
   // ========== 交互状态 ==========
@@ -528,7 +540,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
         })
         .map((el) => el.id);
 
-      set({ selectedIds });
+      set({ selectedIds, lastSelectionEvent: null });
     }
 
     set({
@@ -586,6 +598,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       interaction: initialInteraction,
       selectedIds: [id],
       activeTool: 'select', // 创建后切换回选择工具
+      lastSelectionEvent: null,
     });
 
     return element || null;
@@ -610,6 +623,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
         selectedIds: [],
         interaction: initialInteraction,
         hoverFrameId: null,
+        lastSelectionEvent: null,
       });
     }
   },

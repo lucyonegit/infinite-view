@@ -108,6 +108,8 @@ export interface EditorState {
   interaction: InteractionState;
   /** 拖动时悬停的 Frame ID */
   hoverFrameId: string | null;
+  /** 最近一次选择操作的事件 (用于 Moveable 立即接管拖拽) */
+  lastSelectionEvent: MouseEvent | TouchEvent | null;
 }
 
 // ============ 数据导出接口 (用于持久化预留) ============

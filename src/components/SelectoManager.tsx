@@ -54,7 +54,8 @@ export function SelectoManager() {
       .filter(Boolean) as string[];
     
     if (e.added.length || e.removed.length) {
-      selectElements(newSelectedIds, e.inputEvent.shiftKey);
+      // 传递 inputEvent 给 selectedIds，以便 MoveableManager 能够立即接管拖拽
+      selectElements(newSelectedIds, e.inputEvent.shiftKey, e.inputEvent);
     } else {
       console.log('Selecto: onSelect - no elements added or removed, skipping selectElements');
     }
