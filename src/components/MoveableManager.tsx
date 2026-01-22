@@ -44,6 +44,9 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
 
   // 2. 将 targets 改为 state，以便我们在 DOM 真正挂载后准确查询
   const [targets, setTargets] = useState<HTMLElement[]>([]);
+  
+  // Track if we're currently in a drag session
+  const isDragging = useRef(false);
 
   // 3. 在层级发生变化（nestingKey 改变）后，同步更新 DOM 引用
   useLayoutEffect(() => {
@@ -65,13 +68,18 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
       });
     }
 
-    // 如果当前正在拖拽中（这是用于处理 React 重新渲染导致的重连，不同于上面的首次点击拖拽），需要恢复拖拽会话
-    if (lastEvent.current && moveableRef.current && nextTargets.length > 0) {
+    // 如果当前正在拖拽中，需要恢复拖拽会话
+    // 使用 isDragging 标记而不是仅检查 lastEvent，确保只在真正拖拽时恢复
+    if (isDragging.current && lastEvent.current && nextTargets.length > 0) {
+      // Use double RAF to ensure Moveable has updated its internal state
       requestAnimationFrame(() => {
-        if (moveableRef.current && lastEvent.current) {
-          moveableRef.current.dragStart(lastEvent.current);
-          moveableRef.current.updateRect();
-        }
+        requestAnimationFrame(() => {
+          if (moveableRef.current && lastEvent.current && isDragging.current) {
+            moveableRef.current.updateTarget();
+            moveableRef.current.updateRect();
+            moveableRef.current.dragStart(lastEvent.current);
+          }
+        });
       });
     }
      
@@ -224,7 +232,7 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
 
   const handleDragGroup = ({ events }: OnDragGroup) => {
     const latestElements = useEditorStore.getState().elements;
-    events.forEach(({ target, delta, inputEvent }) => {
+    events.forEach(({ target, delta }) => {
       const id = target.getAttribute('data-element-id');
       if (id) {
         const element = latestElements.find(el => el.id === id);
@@ -236,9 +244,7 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
               x: element.x + delta[0], 
               y: element.y + delta[1] 
             });
-            
-            const mouseWorld = screenToWorld(inputEvent.clientX, inputEvent.clientY);
-            checkFrameHover(id, mouseWorld.x, mouseWorld.y);
+            // Note: No checkFrameHover during group drag to prevent DOM changes that break the drag session
           }
         }
       }
@@ -281,11 +287,15 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
       isDisplaySnapDigit={false}
       snapDirections={{ top: true, left: true, bottom: true, right: true, center: true, middle: true }}
       elementSnapDirections={{ top: true, left: true, bottom: true, right: true, center: true, middle: true }}
-      onDragStart={() => console.log('Moveable: onDragStart')}
+      onDragStart={() => {
+        console.log('Moveable: onDragStart');
+        isDragging.current = true;
+      }}
       onDrag={handleDrag}
       onDragEnd={() => {
         console.log('Moveable: onDragEnd');
-        lastEvent.current = null; // 清除记录
+        isDragging.current = false;
+        lastEvent.current = null;
         commitNesting();
       }}
       onResizeStart={() => {
@@ -294,9 +304,15 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
       }}
       onResizeEnd={handleResizeEnd}
       onResize={handleResize}
+      onDragGroupStart={() => {
+        console.log('Moveable: onDragGroupStart');
+        isDragging.current = true;
+      }}
       onDragGroup={handleDragGroup}
       onDragGroupEnd={() => {
         console.log('Moveable: onDragGroupEnd');
+        isDragging.current = false;
+        lastEvent.current = null;
         commitNesting();
       }}
       onResizeGroup={handleResizeGroup}
