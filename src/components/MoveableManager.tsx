@@ -97,17 +97,45 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
     const element = elements.find(el => el.id === id);
     if (!element || element.type === 'frame') return;
 
-    // 根据鼠标指针所在的世界坐标查找目标 Frame
+    // Case 1: Element already has a parent Frame
+    if (element.parentId) {
+      const parentFrame = elements.find(el => el.id === element.parentId);
+      if (!parentFrame) return;
+
+      // Check if element is completely outside parent Frame (no overlap at all)
+      // Element position is relative to parent, so check against parent's local bounds
+      const elementRight = element.x + element.width;
+      const elementBottom = element.y + element.height;
+      const frameRight = parentFrame.width;
+      const frameBottom = parentFrame.height;
+
+      const isCompletelyOutside = 
+        elementRight <= 0 ||           // Completely to the left
+        element.x >= frameRight ||     // Completely to the right
+        elementBottom <= 0 ||          // Completely above
+        element.y >= frameBottom;      // Completely below
+
+      if (isCompletelyOutside) {
+        removeFromFrame(id);
+        requestAnimationFrame(() => {
+          if (moveableRef.current) {
+            moveableRef.current.updateTarget();
+            moveableRef.current.updateRect();
+          }
+        });
+      }
+      return;
+    }
+
+    // Case 2: Root-level element - use mouse position to add to Frame
     const targetFrame = findFrameAtPoint(mouseWorldX, mouseWorldY, selectedIds);
     
     if (targetFrame) {
-      if (hoverFrameId !== targetFrame.id && element.parentId !== targetFrame.id) {
+      if (hoverFrameId !== targetFrame.id) {
         setHoverFrame(targetFrame.id);
-        // 执行嵌套逻辑
         addToFrame(id, targetFrame.id);
         
         requestAnimationFrame(() => {
-          // 在 DOM 更新后（嵌套已生效），强制 Moveable 刷新位置和目标引用
           if (moveableRef.current) {
             moveableRef.current.updateTarget();
             moveableRef.current.updateRect();
@@ -117,15 +145,6 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
     } else {
       if (hoverFrameId) {
         setHoverFrame(null);
-      }
-      if (element.parentId) {
-        removeFromFrame(id);
-        requestAnimationFrame(() => {
-          if (moveableRef.current) {
-            moveableRef.current.updateTarget();
-            moveableRef.current.updateRect();
-          }
-        });
       }
     }
   }, [elements, findFrameAtPoint, selectedIds, hoverFrameId, setHoverFrame, addToFrame, removeFromFrame]);
