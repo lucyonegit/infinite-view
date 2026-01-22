@@ -143,13 +143,17 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
       const latestElements = useEditorStore.getState().elements;
       const element = latestElements.find(el => el.id === id);
       if (element) {
-        updateElement(id, { 
-          x: element.x + delta[0], 
-          y: element.y + delta[1] 
-        });
+        // Skip position update if parent Frame is also selected (parent movement already moves child)
+        const isParentAlsoSelected = element.parentId && selectedIds.includes(element.parentId);
+        if (!isParentAlsoSelected) {
+          updateElement(id, { 
+            x: element.x + delta[0], 
+            y: element.y + delta[1] 
+          });
 
-        const mouseWorld = screenToWorld(inputEvent.clientX, inputEvent.clientY);
-        checkFrameHover(id, mouseWorld.x, mouseWorld.y);
+          const mouseWorld = screenToWorld(inputEvent.clientX, inputEvent.clientY);
+          checkFrameHover(id, mouseWorld.x, mouseWorld.y);
+        }
       }
     }
   };
@@ -206,13 +210,17 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
       if (id) {
         const element = latestElements.find(el => el.id === id);
         if (element) {
-          updateElement(id, { 
-            x: element.x + delta[0], 
-            y: element.y + delta[1] 
-          });
-          
-          const mouseWorld = screenToWorld(inputEvent.clientX, inputEvent.clientY);
-          checkFrameHover(id, mouseWorld.x, mouseWorld.y);
+          // Skip position update if parent Frame is also selected (parent movement already moves child)
+          const isParentAlsoSelected = element.parentId && selectedIds.includes(element.parentId);
+          if (!isParentAlsoSelected) {
+            updateElement(id, { 
+              x: element.x + delta[0], 
+              y: element.y + delta[1] 
+            });
+            
+            const mouseWorld = screenToWorld(inputEvent.clientX, inputEvent.clientY);
+            checkFrameHover(id, mouseWorld.x, mouseWorld.y);
+          }
         }
       }
     });
@@ -245,6 +253,7 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
       target={targets}
       draggable={true}
       resizable={true}
+      dragArea={true}
       throttleDrag={0}
       throttleResize={0}
       snappable={true}
