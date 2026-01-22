@@ -1,0 +1,107 @@
+.floating-toolbar-container {
+  position: absolute;
+  z-index: 1000;
+  transform: translate(-50%, -100%); /* 居中并定位在上方 */
+  margin-top: -24px; /* 与元素的间距 */
+  pointer-events: auto;
+  user-select: none;
+  animation: toolbar-in 0.2s ease-out;
+}
+
+@keyframes toolbar-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -80%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -100%);
+  }
+}
+
+.floating-toolbar {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 16px;
+  padding: 8px 12px;
+  box-shadow:
+    0 10px 25px -5px rgba(0, 0, 0, 0.1),
+    0 8px 10px -6px rgba(0, 0, 0, 0.1),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.toolbar-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #333;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  white-space: nowrap;
+}
+
+.toolbar-item:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.toolbar-item:active {
+  background: rgba(0, 0, 0, 0.1);
+  transform: scale(0.98);
+}
+
+.toolbar-item .icon {
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toolbar-item.export-action {
+  color: #4f46e5;
+}
+
+.toolbar-item.export-action:hover {
+  background: rgba(79, 70, 229, 0.1);
+}
+
+.toolbar-item .badge {
+  position: absolute;
+  top: -6px;
+  right: 0px;
+  background: #3b82f6;
+  color: white;
+  font-size: 8px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-weight: bold;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+.divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.1);
+  margin: 0 6px;
+}
+
+.toolbar-item.more .icon {
+  font-weight: bold;
+}

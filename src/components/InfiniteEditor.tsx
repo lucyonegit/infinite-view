@@ -5,6 +5,7 @@ import { Toolbar } from './Toolbar';
 import { ElementRenderer } from './ElementRenderer';
 import { MoveableManager } from './MoveableManager';
 import { SelectoManager } from './SelectoManager';
+import { FloatingToolbar } from './FloatingToolbar';
 import { exportSelectedFrameAsImage } from '../utils/exportUtils';
 import type { Point, Bounds } from '../types/editor';
 import './InfiniteEditor.css';
@@ -32,6 +33,7 @@ export function InfiniteEditor({ onBack }: InfiniteEditorProps) {
     setViewport,
     reorderElements,
     deleteElements,
+    deselectAll,
   } = useEditorStore();
 
   // ============ 坐标转换 ============
@@ -51,6 +53,42 @@ export function InfiniteEditor({ onBack }: InfiniteEditorProps) {
       y: (clientY - rect.top) / currentZoom + scrollTop,
     };
   }, []);
+
+  // ============ 选区计算 ============
+
+  // 计算选中元素的包围盒 (用于定位工具条)
+  const selectionBoundingBox = (() => {
+    if (selectedIds.length === 0) return null;
+
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    // 获取所有选中元素的世界坐标
+    const { getElementWorldPos } = useEditorStore.getState();
+
+    selectedIds.forEach(id => {
+      const el = elements.find(e => e.id === id);
+      if (el) {
+        const worldPos = getElementWorldPos(id);
+        minX = Math.min(minX, worldPos.x);
+        minY = Math.min(minY, worldPos.y);
+        maxX = Math.max(maxX, worldPos.x + el.width);
+        maxY = Math.max(maxY, worldPos.y + el.height);
+      }
+    });
+
+    if (minX === Infinity) return null;
+
+    return {
+      x: minX,
+      y: minY,
+      width: maxX - minX,
+      height: maxY - minY,
+      centerX: minX + (maxX - minX) / 2,
+    };
+  })();
 
   // ============ 形状创建 (Window 级别事件保证丝滑) ============
 
@@ -121,13 +159,15 @@ export function InfiniteEditor({ onBack }: InfiniteEditorProps) {
           reorderElements(selectedIds, e.altKey ? 'front' : 'forward');
         } else if (e.key === 'Backspace' || e.key === 'Delete') {
           deleteElements(selectedIds);
+        } else if (e.key === 'Escape') {
+          deselectAll();
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedIds, reorderElements, deleteElements]);
+  }, [selectedIds, reorderElements, deleteElements, deselectAll]);
 
   // ============ InfiniteViewer 事件 ============
 
@@ -221,6 +261,25 @@ export function InfiniteEditor({ onBack }: InfiniteEditorProps) {
               zoom={zoom} 
               elements={elements} 
               selectedIds={selectedIds} 
+            />
+          )}
+
+          {/* 浮动工具栏 */}
+          {selectionBoundingBox && (
+            <FloatingToolbar 
+              x={selectionBoundingBox.centerX} 
+              y={selectionBoundingBox.y}
+              onExport={() => {
+                // 如果只选中了一个 Frame，则导出该 Frame
+                if (selectedIds.length === 1) {
+                  const el = elements.find(e => e.id === selectedIds[0]);
+                  if (el?.type === 'frame') {
+                    exportSelectedFrameAsImage(selectedIds[0], elements);
+                    return;
+                  }
+                }
+                alert('目前仅支持导出 Frame 元素');
+              }}
             />
           )}
         </div>

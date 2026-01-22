@@ -57,14 +57,8 @@ export function SelectoManager() {
       .map((el) => (el as HTMLElement | SVGElement).getAttribute('data-element-id'))
       .filter(Boolean) as string[];
     
-    if (e.added.length || e.removed.length) {
-      // 只有当拖拽是从元素开始的（点击选择/点击拖拽）时，才传递 inputEvent 以便 Moveable 立即接管
-      // 如果是框选过程冲碰到了元素，不要传递 event，避免 Moveable 夺取拖拽控制权
-      const eventToPass = isDragStartOnElement.current ? e.inputEvent : undefined;
-      selectElements(newSelectedIds, e.inputEvent.shiftKey, eventToPass);
-    } else {
-      console.log('Selecto: onSelect - no elements added or removed, skipping selectElements');
-    }
+    const eventToPass = isDragStartOnElement.current ? e.inputEvent : undefined;
+    selectElements(newSelectedIds, e.inputEvent.shiftKey, eventToPass);
   };
 
   const onSelectEnd = (e: OnSelectEnd) => {

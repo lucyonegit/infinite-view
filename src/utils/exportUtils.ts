@@ -11,13 +11,14 @@ import type { Element } from '../types/editor';
  * @param scale 导出缩放比例
  * @returns Promise<Blob>
  */
-export async function exportFrameAsImage(
+export async function exportFrameAsCanvas(
   frameElement: Element,
   allElements: Element[],
   scale: number = 2
-): Promise<Blob> {
+): Promise<HTMLCanvasElement> {
   // 获取 Frame 的子元素
   const children = allElements.filter(el => el.parentId === frameElement.id);
+  console.log(`[Export] Frame dimensions: ${frameElement.width}x${frameElement.height}, children count: ${children.length}`);
 
   // 创建 canvas
   const canvas = document.createElement('canvas');
@@ -26,6 +27,7 @@ export async function exportFrameAsImage(
 
   canvas.width = frameElement.width * scale;
   canvas.height = frameElement.height * scale;
+  console.log(`[Export] Canvas size: ${canvas.width}x${canvas.height} (scale: ${scale})`);
 
   ctx.scale(scale, scale);
 
@@ -35,18 +37,10 @@ export async function exportFrameAsImage(
 
   // 渲染子元素
   for (const child of children.sort((a, b) => a.zIndex - b.zIndex)) {
-    await renderElementToCanvas(ctx, child, frameElement.x, frameElement.y);
+    await renderElementToCanvas(ctx, child, allElements, 0, 0);
   }
 
-  return new Promise((resolve, reject) => {
-    canvas.toBlob((blob) => {
-      if (blob) {
-        resolve(blob);
-      } else {
-        reject(new Error('Failed to create blob'));
-      }
-    }, 'image/png');
-  });
+  return canvas;
 }
 
 /**
@@ -55,16 +49,19 @@ export async function exportFrameAsImage(
 async function renderElementToCanvas(
   ctx: CanvasRenderingContext2D,
   element: Element,
+  allElements: Element[],
   offsetX: number,
   offsetY: number
 ): Promise<void> {
-  const x = element.x - offsetX;
-  const y = element.y - offsetY;
+  // 注意：store 中子元素的 x, y 是相对于父节点的
+  // offsetX, offsetY 是父节点在 Canvas 中的绝对位置
+  const x = element.x + offsetX;
+  const y = element.y + offsetY;
   const { width, height } = element;
 
   ctx.save();
 
-  // 应用旋转
+  // 应用旋转 (围绕元素中心)
   if (element.rotation) {
     ctx.translate(x + width / 2, y + height / 2);
     ctx.rotate((element.rotation * Math.PI) / 180);
@@ -77,7 +74,49 @@ async function renderElementToCanvas(
     ctx.clip();
   }
 
+  // 根据类型渲染
   switch (element.type) {
+    case 'frame': {
+      // 1. 渲染 Frame 背景
+      ctx.fillStyle = element.style?.fill || '#ffffff';
+      if (element.style?.borderRadius) {
+        roundRect(ctx, x, y, width, height, element.style.borderRadius);
+        ctx.fill();
+      } else {
+        ctx.fillRect(x, y, width, height);
+      }
+
+      // 2. 裁切子元素到 Frame 范围内
+      ctx.save();
+      if (element.style?.borderRadius) {
+        roundRect(ctx, x, y, width, height, element.style.borderRadius);
+      } else {
+        ctx.beginPath();
+        ctx.rect(x, y, width, height);
+      }
+      ctx.clip();
+
+      // 3. 递归渲染子元素
+      const children = allElements.filter(el => el.parentId === element.id);
+      for (const child of children.sort((a, b) => a.zIndex - b.zIndex)) {
+        await renderElementToCanvas(ctx, child, allElements, x, y);
+      }
+      ctx.restore();
+
+      // 4. 渲染边框 (在子元素之上)
+      if (element.style?.stroke) {
+        ctx.strokeStyle = element.style.stroke;
+        ctx.lineWidth = element.style.strokeWidth || 1;
+        if (element.style?.borderRadius) {
+          roundRect(ctx, x, y, width, height, element.style.borderRadius);
+          ctx.stroke();
+        } else {
+          ctx.strokeRect(x, y, width, height);
+        }
+      }
+      break;
+    }
+
     case 'rectangle':
       ctx.fillStyle = element.style?.fill || '#ffffff';
       if (element.style?.borderRadius) {
@@ -99,15 +138,21 @@ async function renderElementToCanvas(
       }
       break;
 
-    case 'text':
-      ctx.fillStyle = '#333333';
+    case 'text': {
+      ctx.fillStyle = element.style?.fill || '#333333';
       ctx.font = `${element.style?.fontSize || 16}px ${element.style?.fontFamily || 'sans-serif'}`;
-      ctx.textAlign = element.style?.textAlign || 'center';
+      ctx.textAlign = element.style?.textAlign || 'center' as CanvasTextAlign;
       ctx.textBaseline = 'middle';
-      ctx.fillText(element.content || '', x + width / 2, y + height / 2, width);
-      break;
 
-    case 'image':
+      const textX = element.style?.textAlign === 'left' ? x :
+        element.style?.textAlign === 'right' ? x + width :
+          x + width / 2;
+
+      ctx.fillText(element.content || '', textX, y + height / 2, width);
+      break;
+    }
+
+    case 'image': {
       if (element.imageUrl) {
         try {
           const img = await loadImage(element.imageUrl);
@@ -117,21 +162,22 @@ async function renderElementToCanvas(
           ctx.fillStyle = '#f0f0f0';
           ctx.fillRect(x, y, width, height);
           ctx.fillStyle = '#999';
-          ctx.font = '14px sans-serif';
+          ctx.font = '24px sans-serif';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillText('📷', x + width / 2, y + height / 2);
         }
       }
       break;
+    }
   }
 
   ctx.restore();
 }
 
 /**
- * 绘制圆角矩形路径
- */
+     * 绘制圆角矩形路径
+     */
 function roundRect(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -154,30 +200,160 @@ function roundRect(
 }
 
 /**
- * 加载图片
+ * 加载图片（通过 fetch 获取 blob，避免跨域污染 canvas）
+ * 对于跨域图片，先 fetch 为 blob，再创建 object URL
  */
-function loadImage(src: string): Promise<HTMLImageElement> {
+async function loadImage(src: string): Promise<HTMLImageElement> {
+  // 检查是否是 data URL 或 blob URL（这些不需要特殊处理）
+  if (src.startsWith('data:') || src.startsWith('blob:')) {
+    return loadImageDirectly(src);
+  }
+
+  // 检查是否是同源
+  try {
+    const url = new URL(src, window.location.origin);
+    if (url.origin === window.location.origin) {
+      // 同源图片直接加载
+      return loadImageDirectly(src);
+    }
+  } catch {
+    // URL 解析失败，尝试直接加载
+    return loadImageDirectly(src);
+  }
+
+  // 跨域图片：通过 fetch 获取 blob
+  try {
+    const response = await fetch(src, { mode: 'cors' });
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.status}`);
+    }
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+
+    try {
+      const img = await loadImageDirectly(blobUrl);
+      // 注意：这里不立即 revoke，因为 canvas 可能还需要使用
+      // 在 exportFrameAsCanvas 完成后会释放
+      return img;
+    } catch (err) {
+      URL.revokeObjectURL(blobUrl);
+      throw err;
+    }
+  } catch {
+    // fetch 失败，回退到直接加载（可能仍会污染 canvas）
+    console.warn(`[Export] Failed to fetch image via blob, falling back to direct load: ${src}`);
+    return loadImageDirectly(src);
+  }
+}
+
+/**
+ * 直接加载图片（不做跨域处理）
+ */
+function loadImageDirectly(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => resolve(img);
-    img.onerror = reject;
+    img.onerror = () => reject(new Error(`Failed to load image: ${src}`));
     img.src = src;
   });
 }
 
 /**
- * 下载 Blob 为文件
+ * 清理文件名，移除非法字符
+ * 非法字符包括: / \ ? % * : | " < > 以及控制字符
  */
-export function downloadBlob(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
+function sanitizeFilename(filename: string): string {
+  // 移除非法字符
+  let sanitized = filename.replace(/[/\\?%*:|"<>]/g, '_');
+
+  // 移除控制字符 (0x00-0x1F) - 使用 Unicode 转义
+  // eslint-disable-next-line no-control-regex
+  sanitized = sanitized.replace(/[\u0000-\u001F]/g, '');
+
+  // 移除首尾空格和点
+  sanitized = sanitized.replace(/^[\s.]+|[\s.]+$/g, '');
+
+  // 如果文件名为空，使用默认名
+  if (!sanitized || sanitized.length === 0) {
+    sanitized = 'export';
+  }
+
+  // 限制文件名长度（不包括扩展名），大多数文件系统限制为255字节
+  if (sanitized.length > 200) {
+    sanitized = sanitized.substring(0, 200);
+  }
+
+  return sanitized;
+}
+
+/**
+ * 将 Data URL 转换为 Blob
+ */
+function dataURLtoBlob(dataUrl: string): Blob {
+  const arr = dataUrl.split(',');
+  const mimeMatch = arr[0].match(/:(.*?);/);
+  const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new Blob([u8arr], { type: mime });
+}
+
+/**
+ * 下载 DataURL 为 PNG 文件
+ * 使用 Blob + Object URL 方式，强制浏览器使用指定的文件名
+ * @param dataUrl 图片的 DataURL
+ * @param filename 文件名（可以包含或不包含 .png 扩展名）
+ */
+export function downloadDataURL(dataUrl: string, filename: string): void {
+  // 分离文件名和扩展名，去掉原有扩展名
+  const lastDotIndex = filename.lastIndexOf('.');
+  let baseName: string;
+
+  if (lastDotIndex > 0) {
+    baseName = filename.substring(0, lastDotIndex);
+  } else {
+    baseName = filename;
+  }
+
+  // 清理文件名
+  baseName = sanitizeFilename(baseName);
+
+  // 确保扩展名为 png
+  const safeFilename = `${baseName}.png`;
+
+  console.log(`[Export] Triggering download: ${safeFilename}`);
+
+  // 将 Data URL 转换为 Blob
+  const blob = dataURLtoBlob(dataUrl);
+
+  // 创建 Object URL（这是本地 URL，不会有跨域问题）
+  const blobUrl = URL.createObjectURL(blob);
+
   const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
+  a.href = blobUrl;
+  a.download = safeFilename;
+
+  // 某些浏览器（如 Safari）对隐藏元素的点击不感冒，用更稳健的样式
+  a.style.position = 'fixed';
+  a.style.left = '-10000px';
+  a.style.top = '-10000px';
+  a.style.opacity = '0';
+
   document.body.appendChild(a);
   a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+
+  // 清理
+  setTimeout(() => {
+    URL.revokeObjectURL(blobUrl);
+    if (document.body.contains(a)) {
+      document.body.removeChild(a);
+    }
+  }, 1000);
 }
 
 /**
@@ -195,11 +371,44 @@ export async function exportSelectedFrameAsImage(
   }
 
   try {
-    const blob = await exportFrameAsImage(frame, elements, scale);
-    const filename = `${frame.name || 'frame'}_${Date.now()}.png`;
-    downloadBlob(blob, filename);
+    console.log('[Export] Exporting frame:', selectedId);
+    const canvas = await exportFrameAsCanvas(frame, elements, scale);
+
+    // 清理文件名中的非法字符
+    const sanitizedName = sanitizeFilename(frame.name || 'frame');
+    const filename = `${sanitizedName}_${Date.now()}.png`;
+
+    console.log('[Export] Canvas ready, converting to blob synchronously...');
+
+    // 同步方式：先用 toDataURL，然后转为 Blob
+    // 这样可以保持在用户手势的同步调用栈中
+    const dataUrl = canvas.toDataURL('image/png');
+    const blob = dataURLtoBlob(dataUrl);
+
+    console.log(`[Export] Blob created, size: ${blob.size}, downloading as: ${filename}`);
+
+    // 创建 Blob URL 并下载
+    const blobUrl = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = filename;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+
+    // 同步触发点击
+    a.click();
+
+    // 延迟清理
+    setTimeout(() => {
+      URL.revokeObjectURL(blobUrl);
+      document.body.removeChild(a);
+    }, 5000);
+
+    console.log('[Export] Download triggered successfully');
+
   } catch (error) {
-    console.error('Export failed:', error);
-    alert('导出失败');
+    console.error('[Export] Failed:', error);
+    alert('导出失败，请检查控制台日志');
   }
 }
