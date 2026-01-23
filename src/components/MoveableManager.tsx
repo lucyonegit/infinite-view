@@ -61,9 +61,7 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
       .map(id => document.querySelector(`[data-element-id="${id}"]`) as HTMLElement)
       .filter(Boolean);
     
-    requestAnimationFrame(() => {
-      setTargets(nextTargets);
-    });
+    setTargets(nextTargets);
 
     // 检查是否有来自 Selecto 的立即拖拽事件
     const selectionEvent = consumeSelectionEvent();
