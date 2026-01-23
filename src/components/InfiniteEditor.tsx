@@ -54,6 +54,23 @@ export function InfiniteEditor({ onBack }: InfiniteEditorProps) {
     };
   }, []);
 
+  // 世界坐标转屏幕坐标 (用于定位不随 zoom 缩放的 UI)
+  const worldToScreen = useCallback((worldX: number, worldY: number): Point => {
+    const viewer = viewerRef.current;
+    if (!viewer) return { x: worldX, y: worldY };
+
+    const container = viewer.getContainer();
+    const rect = container.getBoundingClientRect();
+    const scrollLeft = viewer.getScrollLeft();
+    const scrollTop = viewer.getScrollTop();
+    const currentZoom = viewer.getZoom();
+
+    return {
+      x: (worldX - scrollLeft) * currentZoom + rect.left,
+      y: (worldY - scrollTop) * currentZoom + rect.top,
+    };
+  }, []);
+
   // ============ 选区计算 ============
 
   // 计算选中元素的包围盒 (用于定位工具条)
@@ -263,27 +280,30 @@ export function InfiniteEditor({ onBack }: InfiniteEditorProps) {
               selectedIds={selectedIds} 
             />
           )}
-
-          {/* 浮动工具栏 */}
-          {selectionBoundingBox && (
-            <FloatingToolbar 
-              x={selectionBoundingBox.centerX} 
-              y={selectionBoundingBox.y}
-              onExport={() => {
-                // 如果只选中了一个 Frame，则导出该 Frame
-                if (selectedIds.length === 1) {
-                  const el = elements.find(e => e.id === selectedIds[0]);
-                  if (el?.type === 'frame') {
-                    exportSelectedFrameAsImage(selectedIds[0], elements);
-                    return;
-                  }
-                }
-                alert('目前仅支持导出 Frame 元素');
-              }}
-            />
-          )}
         </div>
       </InfiniteViewer>
+
+      {/* 浮动工具栏 - 放在 InfiniteViewer 外部，不随 zoom 缩放 */}
+      {selectionBoundingBox && (() => {
+        const screenPos = worldToScreen(selectionBoundingBox.centerX, selectionBoundingBox.y);
+        return (
+          <FloatingToolbar 
+            x={screenPos.x} 
+            y={screenPos.y}
+            onExport={() => {
+              // 如果只选中了一个 Frame，则导出该 Frame
+              if (selectedIds.length === 1) {
+                const el = elements.find(e => e.id === selectedIds[0]);
+                if (el?.type === 'frame') {
+                  exportSelectedFrameAsImage(selectedIds[0], elements);
+                  return;
+                }
+              }
+              alert('目前仅支持导出 Frame 元素');
+            }}
+          />
+        );
+      })()}
 
       {/* SelectoManager 放在视口外，捕捉整个视口容器的事件 */}
       {activeTool === 'select' && (

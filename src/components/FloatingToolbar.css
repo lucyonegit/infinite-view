@@ -1,5 +1,5 @@
 .floating-toolbar-container {
-  position: absolute;
+  position: fixed;
   z-index: 1000;
   transform: translate(-50%, -100%); /* 居中并定位在上方 */
   margin-top: -24px; /* 与元素的间距 */
