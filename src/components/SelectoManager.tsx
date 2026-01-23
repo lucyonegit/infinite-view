@@ -66,8 +66,16 @@ export function SelectoManager() {
     console.log('Selecto: onSelectEnd - isDragStart:', e.isDragStart);
     console.log('Selecto: onSelectEnd - inputEvent shiftKey:', e.inputEvent.shiftKey);
 
-    // 如果最终没有选中，且不是在多选/拖拽，则清空
-    if (e.selected.length === 0 && !e.inputEvent.shiftKey && !e.isDragStart) {
+    const newSelectedIds = e.selected
+      .map((el) => (el as HTMLElement | SVGElement).getAttribute('data-element-id'))
+      .filter(Boolean) as string[];
+
+    if (newSelectedIds.length > 0) {
+      // 确保选择状态被更新（即使 onSelect 没有触发）
+      const eventToPass = isDragStartOnElement.current ? e.inputEvent : undefined;
+      selectElements(newSelectedIds, e.inputEvent.shiftKey, eventToPass);
+    } else if (!e.inputEvent.shiftKey && !e.isDragStart) {
+      // 如果最终没有选中，且不是在多选/拖拽，则清空
       console.log('Selecto: onSelectEnd - no elements selected and not multi-selecting/dragging, deselecting all');
       deselectAll();
     } else {

@@ -30,6 +30,7 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
     viewport,
     setInteraction,
     consumeSelectionEvent,
+    selectElements,
   } = useEditorStore();
 
   // 1. 建立一个“层级键”，仅在选中元素的父节点发生变化时更新
@@ -287,8 +288,39 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
       isDisplaySnapDigit={false}
       snapDirections={{ top: true, left: true, bottom: true, right: true, center: true, middle: true }}
       elementSnapDirections={{ top: true, left: true, bottom: true, right: true, center: true, middle: true }}
-      onDragStart={() => {
+      onDragStart={(e) => {
         console.log('Moveable: onDragStart');
+        
+        // dragArea 会在选中元素上创建覆盖层 (.moveable-area)
+        // 需要使用 elementFromPoint 获取鼠标下真正的元素（穿透覆盖层）
+        const mouseEvent = e.inputEvent as MouseEvent;
+        
+        // 临时隐藏 Moveable 的覆盖层以获取下方真正的元素
+        const moveableAreas = document.querySelectorAll('.moveable-area');
+        moveableAreas.forEach(area => {
+          (area as HTMLElement).style.pointerEvents = 'none';
+        });
+        
+        const actualTarget = document.elementFromPoint(mouseEvent.clientX, mouseEvent.clientY) as HTMLElement;
+        
+        // 恢复覆盖层
+        moveableAreas.forEach(area => {
+          (area as HTMLElement).style.pointerEvents = '';
+        });
+        
+        // 检查点击目标是否是已选中元素内部的未选中子元素
+        const clickedElement = actualTarget?.closest('.element');
+        if (clickedElement) {
+          const clickedId = clickedElement.getAttribute('data-element-id');
+          // 如果点击的元素不在已选中列表中，说明用户想选中这个子元素
+          if (clickedId && !selectedIds.includes(clickedId)) {
+            console.log('Moveable: stopped - selecting child element:', clickedId);
+            // 手动选择子元素，因为 Selecto 不会收到这个点击事件
+            selectElements([clickedId], mouseEvent.shiftKey);
+            return false; // 阻止 Moveable 拖拽
+          }
+        }
+        
         isDragging.current = true;
       }}
       onDrag={handleDrag}
