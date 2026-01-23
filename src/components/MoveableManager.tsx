@@ -29,6 +29,7 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
     hoverFrameId,
     viewport,
     setInteraction,
+    interaction,
     consumeSelectionEvent,
     selectElements,
   } = useEditorStore();
@@ -55,6 +56,7 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
   // 3. 在层级发生变化（nestingKey 改变）后，同步更新 DOM 引用
   useLayoutEffect(() => {
     const nextTargets = selectedIds
+      .filter(id => id !== interaction.editingId) // 过滤掉正在编辑的元素，不显示 Moveable 框
       .map(id => document.querySelector(`[data-element-id="${id}"]`) as HTMLElement)
       .filter(Boolean);
     
@@ -89,7 +91,7 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
       });
     }
      
-  }, [nestingKey, selectedIds, consumeSelectionEvent]); // 当层级结构（ParentID）变化时触发
+  }, [nestingKey, selectedIds, consumeSelectionEvent, interaction.editingId]); // 当层级结构（ParentID）变化时触发
 
   const elementGuidelines = useMemo(() => {
     return elements

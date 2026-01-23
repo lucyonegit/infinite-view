@@ -9,6 +9,7 @@ const initialInteraction: InteractionState = {
   isResizing: false,
   isMarqueeSelecting: false,
   isCreating: false,
+  editingId: null,
 };
 
 // ============ Slice 接口 ============
@@ -45,6 +46,7 @@ export interface InteractionSliceActions {
   finishMarqueeSelect: () => void;
   startCreating: (type: ElementType, startPoint: Point) => void;
   finishCreating: (endPoint: Point) => Element | null;
+  setEditingId: (id: string | null) => void;
 }
 
 export type InteractionSlice = InteractionSliceState & InteractionSliceActions;
@@ -253,5 +255,11 @@ export const createInteractionSlice: StateCreator<
     });
 
     return element || null;
+  },
+
+  setEditingId: (id) => {
+    set((state) => ({
+      interaction: { ...state.interaction, editingId: id },
+    }));
   },
 });

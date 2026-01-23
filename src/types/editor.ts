@@ -97,6 +97,8 @@ export interface InteractionState {
   marqueeRect?: Bounds;
   /** 正在创建的元素类型 */
   creatingType?: ElementType;
+  /** 正在编辑中的元素 ID */
+  editingId?: string | null;
 }
 
 // ============ 编辑器状态 ============
