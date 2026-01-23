@@ -145,7 +145,7 @@ export function InfiniteEditor({ onBack }: InfiniteEditorProps) {
     };
 
     const handleWindowMouseUp = (e: MouseEvent) => {
-      if (!interaction.isCreating) return;
+      if (!interaction.isCreating || !interaction.startPoint) return;
       
       const worldPoint = screenToWorld(e.clientX, e.clientY);
       finishCreating(worldPoint);
@@ -241,7 +241,7 @@ export function InfiniteEditor({ onBack }: InfiniteEditorProps) {
           </div>
         </div>
         <div className="editor-header-right">
-          {selectedIds.length === 1 && elements.find(el => el.id === selectedIds[0])?.type === 'frame' && (
+          {selectedIds.length === 1 && ['frame', 'text'].includes(elements.find(el => el.id === selectedIds[0])?.type || '') && (
             <button className="export-btn" onClick={() => exportSelectedFrameAsImage(selectedIds[0], elements)}>💾 导出图片</button>
           )}
           {onBack && <button className="back-btn" onClick={onBack}>← Back</button>}
@@ -291,15 +291,15 @@ export function InfiniteEditor({ onBack }: InfiniteEditorProps) {
             x={screenPos.x} 
             y={screenPos.y}
             onExport={() => {
-              // 如果只选中了一个 Frame，则导出该 Frame
+              // 如果只选中了一个可导出的元素，则导出
               if (selectedIds.length === 1) {
                 const el = elements.find(e => e.id === selectedIds[0]);
-                if (el?.type === 'frame') {
+                if (el?.type === 'frame' || el?.type === 'text') {
                   exportSelectedFrameAsImage(selectedIds[0], elements);
                   return;
                 }
               }
-              alert('目前仅支持导出 Frame 元素');
+              alert('目前仅支持导出 Frame 和 Text 元素');
             }}
           />
         );

@@ -1,6 +1,5 @@
 import type { StateCreator } from 'zustand';
 import type { InteractionState, ToolType, ElementType, Point, Element } from '../../types/editor';
-import { EDITOR_CONFIG } from '../../constants/editor';
 
 // ============ 初始状态 ============
 
@@ -219,24 +218,28 @@ export const createInteractionSlice: StateCreator<
     const width = Math.abs(endPoint.x - interaction.startPoint.x);
     const height = Math.abs(endPoint.y - interaction.startPoint.y);
 
-    // 太小的元素不创建
-    if (width < EDITOR_CONFIG.ELEMENT.MIN_WIDTH || height < EDITOR_CONFIG.ELEMENT.MIN_HEIGHT) {
+    // 如果高度或宽度太小，且不是文本工具，则不创建
+    // 文本工具允许点击创建，所以即便大小近乎为 0 也允许
+    const isClick = width < 5 && height < 5;
+    if (interaction.creatingType !== 'text' && isClick) {
       set({ interaction: initialInteraction });
       return null;
     }
 
     const newElement: Omit<Element, 'id' | 'zIndex'> = {
       type: interaction.creatingType,
-      x,
-      y,
-      width,
-      height,
+      x: isClick ? interaction.startPoint.x : x,
+      y: isClick ? interaction.startPoint.y : y,
+      width: isClick ? (interaction.creatingType === 'text' ? 10 : width) : width,
+      height: isClick ? (interaction.creatingType === 'text' ? 30 : height) : height,
       style: {
         fill: interaction.creatingType === 'frame' ? 'rgba(255, 255, 255, 1)' : '#c9c9c9ff',
         stroke: interaction.creatingType === 'frame' ? '#e0e0e0' : undefined,
         strokeWidth: 1,
         borderRadius: 2,
+        fontSize: interaction.creatingType === 'text' ? 24 : undefined,
       },
+      fixedWidth: interaction.creatingType === 'text' ? false : undefined, // 初始不固定宽度
     };
 
     const id = addElement(newElement);

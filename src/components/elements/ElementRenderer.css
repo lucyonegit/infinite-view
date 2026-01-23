@@ -128,13 +128,15 @@
 /* 文本元素 */
 .element-text {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  font-size: 16px;
-  color: #333;
+  align-items: flex-start;
+  justify-content: flex-start;
+  background: transparent !important;
   min-width: 50px;
   min-height: 24px;
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  /* 字体大小通过内联样式设置，确保与元素高度一致 */
 }
 
 .element-text.editing {

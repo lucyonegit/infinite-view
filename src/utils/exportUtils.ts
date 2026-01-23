@@ -139,9 +139,11 @@ async function renderElementToCanvas(
       break;
 
     case 'text': {
+      // 字体大小设为元素高度的 80%
+      const fontSize = Math.max(12, height * 0.8);
       ctx.fillStyle = element.style?.fill || '#333333';
-      ctx.font = `${element.style?.fontSize || 16}px ${element.style?.fontFamily || 'sans-serif'}`;
-      ctx.textAlign = element.style?.textAlign || 'center' as CanvasTextAlign;
+      ctx.font = `${fontSize}px ${element.style?.fontFamily || 'sans-serif'}`;
+      ctx.textAlign = (element.style?.textAlign || 'center') as CanvasTextAlign;
       ctx.textBaseline = 'middle';
 
       const textX = element.style?.textAlign === 'left' ? x :
@@ -357,37 +359,77 @@ export function downloadDataURL(dataUrl: string, filename: string): void {
 }
 
 /**
- * 导出选中的 Frame 为图片并下载
+ * 导出单个元素为 Canvas（支持 text 类型）
  */
-export async function exportSelectedFrameAsImage(
+export async function exportElementAsCanvas(
+  element: Element,
+  allElements: Element[],
+  scale: number = 2
+): Promise<HTMLCanvasElement> {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Failed to get canvas context');
+
+  canvas.width = element.width * scale;
+  canvas.height = element.height * scale;
+  ctx.scale(scale, scale);
+
+  if (element.type === 'text') {
+    // 文本元素：透明背景
+    // 不需要 fillRect，保持透明
+    await renderElementToCanvas(ctx, { ...element, x: 0, y: 0 }, allElements, 0, 0);
+  } else if (element.type === 'frame') {
+    // Frame 元素：渲染背景和子元素
+    ctx.fillStyle = element.style?.fill || '#ffffff';
+    ctx.fillRect(0, 0, element.width, element.height);
+
+    const children = allElements.filter(el => el.parentId === element.id);
+    for (const child of children.sort((a, b) => a.zIndex - b.zIndex)) {
+      await renderElementToCanvas(ctx, child, allElements, 0, 0);
+    }
+  } else {
+    // 其他元素
+    await renderElementToCanvas(ctx, { ...element, x: 0, y: 0 }, allElements, 0, 0);
+  }
+
+  return canvas;
+}
+
+/**
+ * 导出选中的元素为图片并下载（支持 Frame 和 Text）
+ */
+export async function exportSelectedElementAsImage(
   selectedId: string,
   elements: Element[],
   scale: number = 2
 ): Promise<void> {
-  const frame = elements.find(el => el.id === selectedId && el.type === 'frame');
-  if (!frame) {
-    alert('请先选中一个 Frame');
+  const element = elements.find(el => el.id === selectedId);
+  if (!element) {
+    alert('请先选中一个元素');
+    return;
+  }
+
+  // 目前只支持 frame 和 text 类型
+  if (element.type !== 'frame' && element.type !== 'text') {
+    alert('目前仅支持导出 Frame 和 Text 元素');
     return;
   }
 
   try {
-    console.log('[Export] Exporting frame:', selectedId);
-    const canvas = await exportFrameAsCanvas(frame, elements, scale);
+    console.log(`[Export] Exporting ${element.type}:`, selectedId);
+    const canvas = await exportElementAsCanvas(element, elements, scale);
 
     // 清理文件名中的非法字符
-    const sanitizedName = sanitizeFilename(frame.name || 'frame');
+    const sanitizedName = sanitizeFilename(element.name || element.type);
     const filename = `${sanitizedName}_${Date.now()}.png`;
 
-    console.log('[Export] Canvas ready, converting to blob synchronously...');
+    console.log('[Export] Canvas ready, converting to blob...');
 
-    // 同步方式：先用 toDataURL，然后转为 Blob
-    // 这样可以保持在用户手势的同步调用栈中
     const dataUrl = canvas.toDataURL('image/png');
     const blob = dataURLtoBlob(dataUrl);
 
     console.log(`[Export] Blob created, size: ${blob.size}, downloading as: ${filename}`);
 
-    // 创建 Blob URL 并下载
     const blobUrl = URL.createObjectURL(blob);
 
     const a = document.createElement('a');
@@ -396,10 +438,8 @@ export async function exportSelectedFrameAsImage(
     a.style.display = 'none';
     document.body.appendChild(a);
 
-    // 同步触发点击
     a.click();
 
-    // 延迟清理
     setTimeout(() => {
       URL.revokeObjectURL(blobUrl);
       document.body.removeChild(a);
@@ -412,3 +452,16 @@ export async function exportSelectedFrameAsImage(
     alert('导出失败，请检查控制台日志');
   }
 }
+
+/**
+ * 导出选中的 Frame 为图片并下载（向后兼容）
+ * @deprecated 使用 exportSelectedElementAsImage 替代
+ */
+export async function exportSelectedFrameAsImage(
+  selectedId: string,
+  elements: Element[],
+  scale: number = 2
+): Promise<void> {
+  return exportSelectedElementAsImage(selectedId, elements, scale);
+}
+

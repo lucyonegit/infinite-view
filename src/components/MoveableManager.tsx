@@ -48,6 +48,9 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
   
   // Track if we're currently in a drag session
   const isDragging = useRef(false);
+  
+  // Track if we should keep ratio during resize (for text elements at corners)
+  const [keepRatio, setKeepRatio] = useState(false);
 
   // 3. 在层级发生变化（nestingKey 改变）后，同步更新 DOM 引用
   useLayoutEffect(() => {
@@ -55,7 +58,9 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
       .map(id => document.querySelector(`[data-element-id="${id}"]`) as HTMLElement)
       .filter(Boolean);
     
-    setTargets(nextTargets);
+    requestAnimationFrame(() => {
+      setTargets(nextTargets);
+    });
 
     // 检查是否有来自 Selecto 的立即拖拽事件
     const selectionEvent = consumeSelectionEvent();
@@ -186,27 +191,68 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
     }
   };
 
-  const handleResize = ({ target, width, height, drag }: OnResize) => {
-    // 使用 CSS transform 直接操作 DOM，避免 React 重新渲染
-    const newWidth = Math.floor(width);
-    const newHeight = Math.floor(height);
-    target.style.width = `${newWidth}px`;
-    target.style.height = `${newHeight}px`;
-    target.style.transform = `translate(${drag.beforeTranslate[0]}px, ${drag.beforeTranslate[1]}px)`;
+  const handleResize = ({ target, width, height, drag, direction }: OnResize) => {
     const id = target.getAttribute('data-element-id');
     if (!id) return;
     const element = elements.find(el => el.id === id);
     if (!element) return;
-    updateElement(id, {
-      x: element.x + drag.beforeTranslate[0],
-      y: element.y + drag.beforeTranslate[1],
-      width: newWidth,
-      height: newHeight,
-    });
+
+    // 使用 CSS transform 直接操作 DOM，避免 React 重新渲染
+    const newWidth = Math.floor(width);
+    const newHeight = Math.floor(height);
+    
+    // 如果是文本元素，特殊处理
+    if (element.type === 'text') {
+      const isCorner = direction[0] !== 0 && direction[1] !== 0;
+      
+      if (isCorner) {
+        // 等比缩放：根据宽度变化比例计算新字号
+        const widthScale = newWidth / element.width;
+        const currentFontSize = element.style?.fontSize || 24;
+        const newFontSize = Math.max(8, Math.round(currentFontSize * widthScale));
+        
+        target.style.width = `${newWidth}px`;
+        // 注意：不手动设置 target.style.height，让 ResizeObserver 处理，
+        // 或者我们可以设置它以保持视觉同步，但最终高度由内容决定
+        target.style.transform = `translate(${drag.beforeTranslate[0]}px, ${drag.beforeTranslate[1]}px)`;
+        
+        updateElement(id, {
+          x: element.x + drag.beforeTranslate[0],
+          y: element.y + drag.beforeTranslate[1],
+          width: newWidth,
+          style: { ...element.style, fontSize: newFontSize }
+        });
+      } else {
+        // 侧边缩放：仅改变宽度，允许换行（高度将由 ResizeObserver 自动更新）
+        // 标记为已设置固定宽度
+        target.style.width = `${newWidth}px`;
+        target.style.transform = `translate(${drag.beforeTranslate[0]}px, ${drag.beforeTranslate[1]}px)`;
+        
+        updateElement(id, {
+          x: element.x + drag.beforeTranslate[0],
+          y: element.y + drag.beforeTranslate[1],
+          width: newWidth,
+          fixedWidth: true, // 一旦手动调整宽度，就进入固定宽度模式
+        });
+      }
+    } else {
+      // 普通元素：同步更新宽高
+      target.style.width = `${newWidth}px`;
+      target.style.height = `${newHeight}px`;
+      target.style.transform = `translate(${drag.beforeTranslate[0]}px, ${drag.beforeTranslate[1]}px)`;
+      
+      updateElement(id, {
+        x: element.x + drag.beforeTranslate[0],
+        y: element.y + drag.beforeTranslate[1],
+        width: newWidth,
+        height: newHeight,
+      });
+    }
   };
 
   const handleResizeEnd = ({ target }: { target: HTMLElement | SVGElement }) => {
     console.log('Moveable: onResizeEnd');
+    setKeepRatio(false); // 重置 keepRatio 状态
     setInteraction({ isResizing: false });
 
     const id = target.getAttribute('data-element-id');
@@ -217,13 +263,20 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
         const computedStyle = window.getComputedStyle(target);
         const matrix = new DOMMatrix(computedStyle.transform);
         
-        // 提交最终位置和尺寸到 store
-        updateElement(id, {
+        const finalWidth = Math.floor(parseInt(target.style.width));
+        // 对于文本元素，我们通常让 ResizeObserver 处理高度
+        // 但为了保持同步，我们提交当前宽度，高度则视情况而定
+        const updates: Partial<Element> = {
           x: element.x + matrix.m41,
           y: element.y + matrix.m42,
-          width: Math.floor(parseInt(target.style.width)),
-          height: Math.floor(parseInt(target.style.height)),
-        });
+          width: finalWidth,
+        };
+
+        if (element.type !== 'text') {
+           updates.height = Math.floor(parseInt(target.style.height));
+        }
+
+        updateElement(id, updates);
 
         // 清除 transform（位置已提交到 store）
         target.style.transform = '';
@@ -279,6 +332,7 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
       target={targets}
       draggable={true}
       resizable={true}
+      keepRatio={keepRatio}
       dragArea={true}
       throttleDrag={0}
       throttleResize={0}
@@ -330,9 +384,22 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
         lastEvent.current = null;
         commitNesting();
       }}
-      onResizeStart={() => {
-        console.log('Moveable: onResizeStart');
+      onResizeStart={(e) => {
+        console.log('Moveable: onResizeStart, direction:', e.direction);
         setInteraction({ isResizing: true });
+        
+        // 检查是否是文本元素
+        const targetId = e.target.getAttribute('data-element-id');
+        const targetElement = elements.find(el => el.id === targetId);
+        
+        if (targetElement?.type === 'text') {
+          const d = e.direction;
+          // 四角方向：等比缩放
+          const isCorner = (d[0] !== 0 && d[1] !== 0);
+          setKeepRatio(isCorner);
+        } else {
+          setKeepRatio(false);
+        }
       }}
       onResizeEnd={handleResizeEnd}
       onResize={handleResize}

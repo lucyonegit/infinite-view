@@ -71,6 +71,7 @@ export interface Element {
   zIndex: number;
   locked?: boolean;      // 是否锁定
   visible?: boolean;     // 是否可见
+  fixedWidth?: boolean;  // 是否固定宽度 (针对文本元素)
 }
 
 // ============ 交互状态 ============
