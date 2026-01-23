@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useLayoutEffect } from 'react';
 import Selecto, { type OnSelect, type OnSelectEnd } from 'react-selecto';
 import { useEditorStore } from '../store/editorStore';
 
@@ -7,8 +7,21 @@ import { useEditorStore } from '../store/editorStore';
  * 使用 react-selecto 实现丝滑的选择体验
  */
 export function SelectoManager() {
-  const { selectElements, activeTool, deselectAll, interaction } = useEditorStore();
+  // 获取选中的元素 ID
+  const { selectElements, activeTool, deselectAll, interaction, selectedIds } = useEditorStore();
   const isDragStartOnElement = useRef(false);
+  const selectoRef = useRef<Selecto>(null);
+
+  // 计算选中的 DOM 元素，用于同步 Selecto 的内部状态
+  // 使用 useLayoutEffect 确保在渲染后立即同步，避免状态不一致
+  useLayoutEffect(() => {
+    if (selectoRef.current) {
+      const targets = selectedIds
+        .map(id => document.querySelector(`[data-element-id="${id}"]`) as HTMLElement | SVGElement)
+        .filter(Boolean);
+      selectoRef.current.setSelectedTargets(targets);
+    }
+  }, [selectedIds]);
 
   // 只有在选择工具下才启用 Selecto
   const enabled = activeTool === 'select';
@@ -43,7 +56,7 @@ export function SelectoManager() {
     const elementId = target.closest('.element')?.getAttribute('data-element-id');
     isDragStartOnElement.current = !!elementId;
 
-    const { selectedIds } = useEditorStore.getState();
+    // 注意：这里检查的是 store 中的 selectedIds，而不是 Selecto 的内部状态
     if (elementId && selectedIds.includes(elementId) && !e.inputEvent.shiftKey) {
       console.log('Selecto: stopped for dragging selected element');
       e.stop();
@@ -66,16 +79,8 @@ export function SelectoManager() {
     console.log('Selecto: onSelectEnd - isDragStart:', e.isDragStart);
     console.log('Selecto: onSelectEnd - inputEvent shiftKey:', e.inputEvent.shiftKey);
 
-    const newSelectedIds = e.selected
-      .map((el) => (el as HTMLElement | SVGElement).getAttribute('data-element-id'))
-      .filter(Boolean) as string[];
-
-    if (newSelectedIds.length > 0) {
-      // 确保选择状态被更新（即使 onSelect 没有触发）
-      const eventToPass = isDragStartOnElement.current ? e.inputEvent : undefined;
-      selectElements(newSelectedIds, e.inputEvent.shiftKey, eventToPass);
-    } else if (!e.inputEvent.shiftKey && !e.isDragStart) {
-      // 如果最终没有选中，且不是在多选/拖拽，则清空
+    // 如果最终没有选中，且不是在多选/拖拽，则清空
+    if (e.selected.length === 0 && !e.inputEvent.shiftKey && !e.isDragStart) {
       console.log('Selecto: onSelectEnd - no elements selected and not multi-selecting/dragging, deselecting all');
       deselectAll();
     } else {
@@ -85,6 +90,7 @@ export function SelectoManager() {
 
   return (
     <Selecto
+      ref={selectoRef}
       dragContainer={document.body}
       selectableTargets={['.element']}
       hitRate={0}
