@@ -3,6 +3,7 @@ import Moveable, { type OnDrag, type OnResize, type OnDragGroup, type OnResizeGr
 import { useEditorStore } from '../store/editorStore';
 import { useCoordinateSystem } from '../hooks/useCoordinateSystem';
 import type { Element } from '../types/editor';
+import { calculateNewFontSize } from './elements/utils/textUtils';
 
 interface MoveableManagerProps {
   /** 当前缩放级别 */
@@ -209,9 +210,7 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
       
       if (isCorner) {
         // 等比缩放：根据宽度变化比例计算新字号
-        const widthScale = newWidth / element.width;
-        const currentFontSize = element.style?.fontSize || 24;
-        const newFontSize = Math.max(8, Math.round(currentFontSize * widthScale));
+        const newFontSize = calculateNewFontSize(element, newWidth);
         
         target.style.width = `${newWidth}px`;
         // 注意：不手动设置 target.style.height，让 ResizeObserver 处理，
