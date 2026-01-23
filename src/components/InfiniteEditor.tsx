@@ -2,7 +2,7 @@ import { useRef, useCallback, useState, useEffect } from 'react';
 import InfiniteViewer from 'react-infinite-viewer';
 import { useEditorStore } from '../store/editorStore';
 import { Toolbar } from './Toolbar';
-import { ElementRenderer } from './ElementRenderer';
+import { ElementRenderer } from './elements';
 import { MoveableManager } from './MoveableManager';
 import { SelectoManager } from './SelectoManager';
 import { FloatingToolbar } from './FloatingToolbar';
