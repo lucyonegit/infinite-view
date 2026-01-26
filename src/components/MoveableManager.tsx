@@ -33,6 +33,7 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
     interaction,
     consumeSelectionEvent,
     selectElements,
+    setEditingId,
   } = useEditorStore();
 
   // 1. 建立一个“层级键”，仅在选中元素的父节点发生变化时更新
@@ -427,6 +428,33 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
         commitNesting();
       }}
       onResizeGroup={handleResizeGroup}
+      onClick={(e) => {
+        // detail 为 2 表示双击
+        if (e.inputEvent.detail === 2) {
+          const targetElement = e.target as HTMLElement;
+          const id = targetElement.getAttribute('data-element-id');
+          if (id) {
+            const el = elements.find(item => item.id === id);
+            if (el?.type === 'text') {
+              setEditingId(id);
+            }
+          }
+        }
+      }}
+      onClickGroup={(e) => {
+        if (e.inputEvent.detail === 2 && e.targets.length > 0) {
+          // 在组合选中时，双击其中一个元素
+          const targetElement = e.inputEvent.target as HTMLElement;
+          const element = targetElement.closest('.element');
+          const id = element?.getAttribute('data-element-id');
+          if (id) {
+            const el = elements.find(item => item.id === id);
+            if (el?.type === 'text') {
+              setEditingId(id);
+            }
+          }
+        }
+      }}
       renderDirections={['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se']}
       zoom={1 / zoom}
       edge={false}

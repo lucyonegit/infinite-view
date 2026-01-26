@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useEffect, useRef } from 'react';
+import React, { memo, useCallback, useEffect, useRef, useLayoutEffect } from 'react';
 import type { Element } from '../../types/editor';
 import { useEditorStore } from '../../store/editorStore';
 import { getTextCommonStyle } from './utils/textUtils';
@@ -54,11 +54,36 @@ export const TextElementRenderer = memo(function TextElementRenderer({
     return () => observer.disconnect();
   }, [element.id, element.width, element.height, element.fixedWidth, updateElement]);
 
-  const handleTextChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    updateElement(element.id, { content: e.target.value });
+  const editableRef = useRef<HTMLSpanElement>(null);
+
+  // 当进入编辑模式时，自动聚焦并处理光标
+  useLayoutEffect(() => {
+    if (isEditing && editableRef.current) {
+      const el = editableRef.current;
+      
+      // 初始化内容 (仅在刚进入编辑模式时)
+      // 使用 innerText 避免 React 渲染逻辑干扰光标
+      el.innerText = element.content || '';
+      
+      el.focus();
+      
+      // 移动光标到末尾
+      const range = document.createRange();
+      const selection = window.getSelection();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+    }
+  }, [isEditing]); // 仅在编辑状态切换时执行
+
+  const handleInput = useCallback((e: React.FormEvent<HTMLSpanElement>) => {
+    const newContent = (e.target as HTMLSpanElement).innerText;
+    // 实时同步到 store，但不触发 React 对内容的重新渲染（见下方 span 的 children 逻辑）
+    updateElement(element.id, { content: newContent });
   }, [element.id, updateElement]);
 
-  const handleTextBlur = useCallback(() => {
+  const handleBlur = useCallback(() => {
     setEditingId(null);
   }, [setEditingId]);
 
@@ -66,44 +91,24 @@ export const TextElementRenderer = memo(function TextElementRenderer({
 
   return (
     <div ref={elementRef} style={{ width: '100%', height: '100%' }}>
-      {isEditing ? (
-        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
-          <span
-            style={{
-              ...commonStyle,
-              visibility: 'hidden',
-              display: 'inline-block',
-              minWidth: '2px',
-              pointerEvents: 'none',
-            }}
-          >
-            {element.content + (element.content?.endsWith('\n') ? ' ' : '') || ' '}
-          </span>
-          <textarea
-            value={element.content || ''}
-            onChange={handleTextChange}
-            onBlur={handleTextBlur}
-            autoFocus
-            style={{
-              ...commonStyle,
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: '100%',
-              border: 'none',
-              background: 'transparent',
-              resize: 'none',
-              outline: 'none',
-              overflow: 'hidden',
-            }}
-          />
-        </div>
-      ) : (
-        <span style={{ ...commonStyle, width: '100%', display: 'block' }}>
-          {element.content || 'Double click to edit'}
-        </span>
-      )}
+      <span
+        ref={editableRef}
+        contentEditable={isEditing}
+        suppressContentEditableWarning
+        onInput={handleInput}
+        onBlur={handleBlur}
+        style={{ 
+          ...commonStyle, 
+          width: '100%', 
+          display: 'block',
+          outline: 'none',
+          minHeight: '1em',
+          cursor: isEditing ? 'text' : 'pointer'
+        }}
+      >
+        {/* 重要：编辑模式下设为 undefined，交由浏览器 uncontrolled 处理，避免 React 在 input 时重置光标 */}
+        {isEditing ? undefined : (element.content || 'Double click to edit')}
+      </span>
     </div>
   );
 });
