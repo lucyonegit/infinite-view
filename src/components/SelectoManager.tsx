@@ -42,9 +42,9 @@ export function SelectoManager() {
       return;
     }
 
-    // 3. Moveable UI 拦截：如果点在控制点、辅助线、覆盖层上，交给 Moveable 处理
-    const isMoveableUI = target.closest('.moveable-control, .moveable-direction, .moveable-area, .moveable-line');
-    if (isMoveableUI) {
+    // 3. UI 拦截：如果点在工具栏、Moveable 控制点等 UI 上，Selecto 退出
+    const isUI = target.closest('.editor-toolbar, .floating-toolbar, .moveable-control, .moveable-direction, .moveable-area, .moveable-line');
+    if (isUI) {
       stop();
       return;
     }

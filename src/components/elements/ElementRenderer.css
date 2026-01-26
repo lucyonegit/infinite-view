@@ -130,7 +130,6 @@
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
-  background: transparent !important;
   min-width: 50px;
   min-height: 24px;
   overflow: hidden;

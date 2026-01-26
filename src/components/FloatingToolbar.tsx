@@ -1,13 +1,21 @@
-import { memo } from 'react';
+import { memo, useState } from 'react';
+import { useEditorStore } from '../store/editorStore';
+import type { Element } from '../types/editor';
 import './FloatingToolbar.css';
 
 interface FloatingToolbarProps {
   /** 浮动的坐标 (基于视口或 Canvas) */
   x: number;
   y: number;
+  /** 当前选中的单个元素 */
+  element?: Element;
   /** 导出回调 */
   onExport: () => void;
 }
+
+const COLORS = [
+  '#333333', '#ffffff', '#ff4d4f', '#52c41a', '#1890ff', '#fadb14', '#722ed1', '#eb2f96'
+];
 
 /**
  * 浮动工具栏 - 当元素被选中时展示在顶部居中
@@ -15,8 +23,20 @@ interface FloatingToolbarProps {
 export const FloatingToolbar = memo(function FloatingToolbar({ 
   x, 
   y, 
+  element,
   onExport,
 }: FloatingToolbarProps) {
+  const { updateElement } = useEditorStore();
+  const [showColorPicker, setShowColorPicker] = useState<'text' | 'bg' | null>(null);
+
+  const handleUpdateStyle = (updates: Partial<NonNullable<Element['style']>>) => {
+    if (element) {
+      updateElement(element.id, {
+        style: { ...element.style, ...updates }
+      });
+    }
+  };
+
   return (
     <div 
       className="floating-toolbar-container"
@@ -28,53 +48,98 @@ export const FloatingToolbar = memo(function FloatingToolbar({
       onMouseDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
     >
+      {showColorPicker && (
+        <div className="color-picker-bubble">
+          {COLORS.map(color => (
+            <button
+              key={color}
+              className="color-swatch"
+              style={{ backgroundColor: color }}
+              onClick={() => {
+                if (element?.type === 'text') {
+                  if (showColorPicker === 'text') handleUpdateStyle({ fill: color });
+                  else handleUpdateStyle({ backgroundColor: color });
+                } else {
+                  // 矩形和 Frame 直接修改 fill
+                  handleUpdateStyle({ fill: color });
+                }
+                setShowColorPicker(null);
+              }}
+            />
+          ))}
+          <button 
+            className="color-swatch transparent" 
+            title="Transparent"
+            onClick={() => {
+              if (element?.type === 'text') {
+                if (showColorPicker === 'bg') handleUpdateStyle({ backgroundColor: 'transparent' });
+              } else {
+                // 矩形和 Frame 直接将 fill 设为透明
+                handleUpdateStyle({ fill: 'transparent' });
+              }
+              setShowColorPicker(null);
+            }}
+          />
+        </div>
+      )}
       <div className="floating-toolbar">
         <div className="toolbar-group">
-          <button className="toolbar-item" title="放大">
-            <span className="icon">HD</span>
-            <span className="label">放大</span>
-          </button>
+          {/* 矩形和 Frame 的背景色控制 */}
+          {(element?.type === 'rectangle' || element?.type === 'frame') && (
+            <button 
+              className={`toolbar-item ${showColorPicker === 'bg' ? 'active' : ''}`} 
+              onClick={() => setShowColorPicker(showColorPicker === 'bg' ? null : 'bg')}
+              title="背景填充"
+            >
+              <div className="color-indicator" style={{ backgroundColor: element.style?.fill || '#ffffff', border: '1px solid #ddd' }} />
+              <span className="label">填充</span>
+            </button>
+          )}
+
+          {/* 文本元素的颜色控制 */}
+          {element?.type === 'text' && (
+            <>
+              <button 
+                className={`toolbar-item ${showColorPicker === 'text' ? 'active' : ''}`} 
+                onClick={() => setShowColorPicker(showColorPicker === 'text' ? null : 'text')}
+                title="文字颜色"
+              >
+                <div className="color-indicator" style={{ backgroundColor: element.style?.fill || '#333' }} />
+                <span className="label">文字</span>
+              </button>
+              <button 
+                className={`toolbar-item ${showColorPicker === 'bg' ? 'active' : ''}`} 
+                onClick={() => setShowColorPicker(showColorPicker === 'bg' ? null : 'bg')}
+                title="背景颜色"
+              >
+                <div className="color-indicator" style={{ backgroundColor: element.style?.backgroundColor || 'transparent', border: '1px solid #ddd' }} />
+                <span className="label">背景</span>
+              </button>
+            </>
+          )}
+
           <div className="divider" />
-          <button className="toolbar-item" title="移除背景">
-            <span className="icon">🖼️</span>
-            <span className="label">移除背景</span>
-          </button>
-          <button className="toolbar-item" title="Mockup">
-            <span className="icon">👕</span>
-            <span className="label">Mockup</span>
-          </button>
-          <button className="toolbar-item" title="擦除">
-            <span className="icon">🧹</span>
-            <span className="label">擦除</span>
-          </button>
-          <div className="divider" />
-          <button className="toolbar-item" title="编辑元素">
-            <span className="icon">⚙️</span>
-            <span className="label">编辑元素</span>
-          </button>
-          <button className="toolbar-item" title="编辑文字">
-            <span className="icon">T</span>
-            <span className="label">编辑文字</span>
-            <span className="badge">New</span>
-          </button>
-          <button className="toolbar-item" title="扩展">
-            <span className="icon">⤢</span>
-            <span className="label">扩展</span>
-          </button>
+          
           <button className="toolbar-item more" title="更多">
             <span className="icon">...</span>
           </button>
-          <div className="divider" />
-          <button 
-            className="toolbar-item export-action" 
-            title="导出图片"
-            onClick={(e) => {
-              e.stopPropagation();
-              onExport();
-            }}
-          >
-            <span className="icon">⬇️</span>
-          </button>
+
+          {(element?.type === 'frame' || element?.type === 'text' || element?.type === 'image') && (
+            <>
+              <div className="divider" />
+              <button 
+                className="toolbar-item export-action" 
+                title="导出图片"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onExport();
+                }}
+              >
+                <span className="icon">⬇️</span>
+                <span className="label">导出</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
     </div>

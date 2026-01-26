@@ -46,6 +46,7 @@ export interface ElementStyle {
   strokeWidth?: number;
   borderRadius?: number;
   opacity?: number;
+  backgroundColor?: string;
   fontSize?: number;
   fontFamily?: string;
   textAlign?: 'left' | 'center' | 'right';

@@ -87,6 +87,11 @@ export const TextElementRenderer = memo(function TextElementRenderer({
     setEditingId(null);
   }, [setEditingId]);
 
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    // 阻止事件冒泡，防止触发全局快捷键（如 Backspace 删除元素）
+    e.stopPropagation();
+  }, []);
+
   const commonStyle = getTextCommonStyle(element);
 
   return (
@@ -97,6 +102,7 @@ export const TextElementRenderer = memo(function TextElementRenderer({
         suppressContentEditableWarning
         onInput={handleInput}
         onBlur={handleBlur}
+        onKeyDown={handleKeyDown}
         style={{ 
           ...commonStyle, 
           width: '100%', 

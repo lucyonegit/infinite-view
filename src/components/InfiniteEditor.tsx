@@ -167,7 +167,9 @@ export function InfiniteEditor({ onBack }: InfiniteEditorProps) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
+      if (document.activeElement?.tagName === 'INPUT' || 
+          document.activeElement?.tagName === 'TEXTAREA' || 
+          (document.activeElement as HTMLElement)?.isContentEditable) return;
 
       if (selectedIds.length > 0) {
         if (e.key === '[' || e.key === '［') {
@@ -286,10 +288,12 @@ export function InfiniteEditor({ onBack }: InfiniteEditorProps) {
       {/* 浮动工具栏 - 放在 InfiniteViewer 外部，不随 zoom 缩放 */}
       {selectionBoundingBox && (() => {
         const screenPos = worldToScreen(selectionBoundingBox.centerX, selectionBoundingBox.y);
+        const selectedElement = selectedIds.length === 1 ? elements.find(el => el.id === selectedIds[0]) : undefined;
         return (
           <FloatingToolbar 
             x={screenPos.x} 
             y={screenPos.y}
+            element={selectedElement}
             onExport={() => {
               // 如果只选中了一个可导出的元素，则导出
               if (selectedIds.length === 1) {

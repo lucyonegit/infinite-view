@@ -176,6 +176,12 @@ async function renderElementToCanvas(
         }
       }
 
+      // 渲染背景 (如果有)
+      if (element.style?.backgroundColor && element.style.backgroundColor !== 'transparent') {
+        ctx.fillStyle = element.style.backgroundColor;
+        ctx.fillRect(x, y, width, height || (lines.length * lineHeight));
+      }
+
       // 渲染逻辑：根据 textAlign 手动计算每行的 X
       const alignment = element.style?.textAlign || 'left';
       ctx.textAlign = alignment as CanvasTextAlign;
