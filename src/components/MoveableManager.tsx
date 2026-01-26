@@ -54,6 +54,9 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
   // Track if we should keep ratio during resize (for text elements at corners)
   const [keepRatio, setKeepRatio] = useState(false);
 
+  // 记录开始缩放时的初始状态，用于等比缩放计算
+  const resizeStartElement = useRef<Element | null>(null);
+
   // 3. 在层级发生变化（nestingKey 改变）后，同步更新 DOM 引用
   useLayoutEffect(() => {
     const nextTargets = selectedIds
@@ -206,13 +209,17 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
     if (element.type === 'text') {
       const isCorner = direction[0] !== 0 && direction[1] !== 0;
       
-      if (isCorner) {
-        // 等比缩放：根据宽度变化比例计算新字号
-        const newFontSize = calculateNewFontSize(element, newWidth);
+      if (isCorner && resizeStartElement.current) {
+        // 等比缩放：根据【初始宽度】的变化比例计算新字号
+        const newFontSize = calculateNewFontSize(resizeStartElement.current, newWidth);
         
         target.style.width = `${newWidth}px`;
-        // 注意：不手动设置 target.style.height，让 ResizeObserver 处理，
-        // 或者我们可以设置它以保持视觉同步，但最终高度由内容决定
+        // 同步更新 DOM 的字号以保证平滑
+        const textContainer = target.querySelector('span, textarea') as HTMLElement;
+        if (textContainer) {
+          textContainer.style.fontSize = `${newFontSize}px`;
+        }
+        
         target.style.transform = `translate(${drag.beforeTranslate[0]}px, ${drag.beforeTranslate[1]}px)`;
         
         updateElement(id, {
@@ -253,6 +260,7 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
     console.log('Moveable: onResizeEnd');
     setKeepRatio(false); // 重置 keepRatio 状态
     setInteraction({ isResizing: false });
+    resizeStartElement.current = null; // 清除开始状态
 
     const id = target.getAttribute('data-element-id');
     if (id) {
@@ -391,13 +399,18 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
         const targetId = e.target.getAttribute('data-element-id');
         const targetElement = elements.find(el => el.id === targetId);
         
-        if (targetElement?.type === 'text') {
-          const d = e.direction;
-          // 四角方向：等比缩放
-          const isCorner = (d[0] !== 0 && d[1] !== 0);
-          setKeepRatio(isCorner);
-        } else {
-          setKeepRatio(false);
+        if (targetElement) {
+          // 记录开始状态用于后续计算（特别是文本的等比缩放）
+          resizeStartElement.current = { ...targetElement };
+
+          if (targetElement.type === 'text') {
+            const d = e.direction;
+            // 四角方向：等比缩放
+            const isCorner = (d[0] !== 0 && d[1] !== 0);
+            setKeepRatio(isCorner);
+          } else {
+            setKeepRatio(false);
+          }
         }
       }}
       onResizeEnd={handleResizeEnd}

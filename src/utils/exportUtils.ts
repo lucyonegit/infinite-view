@@ -139,18 +139,56 @@ async function renderElementToCanvas(
       break;
 
     case 'text': {
-      // 字体大小设为元素高度的 80%
-      const fontSize = Math.max(12, height * 0.8);
+      const fontSize = element.style?.fontSize || 24;
+      const fontFamily = element.style?.fontFamily || 'sans-serif';
+      const lineHeight = fontSize * 1.2;
+
       ctx.fillStyle = element.style?.fill || '#333333';
-      ctx.font = `${fontSize}px ${element.style?.fontFamily || 'sans-serif'}`;
-      ctx.textAlign = (element.style?.textAlign || 'center') as CanvasTextAlign;
-      ctx.textBaseline = 'middle';
+      ctx.font = `${fontSize}px ${fontFamily}`;
+      ctx.textBaseline = 'top';
 
-      const textX = element.style?.textAlign === 'left' ? x :
-        element.style?.textAlign === 'right' ? x + width :
-          x + width / 2;
+      const content = element.content || 'Double click to edit';
+      const lines: string[] = [];
 
-      ctx.fillText(element.content || '', textX, y + height / 2, width);
+      // 分行逻辑保持不变...
+      if (!element.fixedWidth) {
+        lines.push(...content.split('\n'));
+      } else {
+        const paragraphs = content.split('\n');
+        for (const paragraph of paragraphs) {
+          if (paragraph === '') {
+            lines.push('');
+            continue;
+          }
+          const chars = paragraph.split('');
+          let currentLine = '';
+          for (let n = 0; n < chars.length; n++) {
+            const testLine = currentLine + chars[n];
+            const metrics = ctx.measureText(testLine);
+            if (metrics.width > width && n > 0) {
+              lines.push(currentLine);
+              currentLine = chars[n];
+            } else {
+              currentLine = testLine;
+            }
+          }
+          lines.push(currentLine);
+        }
+      }
+
+      // 渲染逻辑：根据 textAlign 手动计算每行的 X
+      const alignment = element.style?.textAlign || 'left';
+      ctx.textAlign = alignment as CanvasTextAlign;
+
+      lines.forEach((line, index) => {
+        let lineX = x;
+        if (alignment === 'center') {
+          lineX = x + width / 2;
+        } else if (alignment === 'right') {
+          lineX = x + width;
+        }
+        ctx.fillText(line, lineX, y + index * lineHeight);
+      });
       break;
     }
 

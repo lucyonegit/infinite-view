@@ -27,39 +27,39 @@ export function SelectoManager() {
   const enabled = activeTool === 'select';
 
   const onDragStart = (e: { inputEvent: MouseEvent; stop: () => void }) => {
-    console.log('Selecto: onDragStart', e.inputEvent.target);
-    
-    // 如果 Moveable 正在 resize，完全不处理（解决快速拖动时鼠标脱离 handle 的问题）
-    if (interaction.isResizing) {
-      console.log('Selecto: stopped because Moveable is resizing');
-      e.stop();
-      return;
-    }
-    
-    // 忽略右键或者不是选择工具的情况
-    if (e.inputEvent.button !== 0 || !enabled) {
-      e.stop();
-      return;
-    }
-    
-    const target = e.inputEvent.target as HTMLElement;
-    // 如果点击的是 Moveable 的控制组件，停止 Selecto，让 Moveable 处理
-    // .moveable-control = 控制点, .moveable-direction = resize handles（方向控制点）
-    // .moveable-area = 控制区域, .moveable-line = 边框线
-    if (target.closest('.moveable-control') || target.closest('.moveable-direction') || target.closest('.moveable-area') || target.closest('.moveable-line')) {
-      console.log('Selecto: stopped for Moveable');
-      e.stop();
+    const { inputEvent, stop } = e;
+    const target = inputEvent.target as HTMLElement;
+
+    // 1. 基础验证：仅左键且处于选择工具激活状态
+    if (inputEvent.button !== 0 || !enabled) {
+      stop();
       return;
     }
 
-    // 记录是否点击在元素上，用于在 onSelect 中决定是否触发立即拖拽
-    const elementId = target.closest('.element')?.getAttribute('data-element-id');
+    // 2. 状态冲突检查：如果 Moveable 正在进行 Resizing，Selecto 退出避免冲突
+    if (interaction.isResizing) {
+      stop();
+      return;
+    }
+
+    // 3. Moveable UI 拦截：如果点在控制点、辅助线、覆盖层上，交给 Moveable 处理
+    const isMoveableUI = target.closest('.moveable-control, .moveable-direction, .moveable-area, .moveable-line');
+    if (isMoveableUI) {
+      stop();
+      return;
+    }
+
+    // 4. 元素交互处理
+    const element = target.closest('.element');
+    const elementId = element?.getAttribute('data-element-id');
     isDragStartOnElement.current = !!elementId;
 
-    // 注意：这里检查的是 store 中的 selectedIds，而不是 Selecto 的内部状态
-    if (elementId && selectedIds.includes(elementId) && !e.inputEvent.shiftKey) {
-      console.log('Selecto: stopped for dragging selected element');
-      e.stop();
+    // 如果点击的是【已选中元素】（且没有按住 Shift）
+    // 特殊处理：因为某些元素（如 Text）层级可能高于 Moveable 覆盖层，导致常规拖拽失效
+    // 我们手动触发一次选择，通过 store 驱动 Moveable 开启立即拖拽
+    if (elementId && selectedIds.includes(elementId) && !inputEvent.shiftKey) {
+      selectElements([...selectedIds], false, inputEvent);
+      stop(); // 停止 Selecto，通过 Moveable 驱动拖拽
       return;
     }
   };

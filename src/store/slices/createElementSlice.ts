@@ -45,12 +45,15 @@ export const createElementSlice: StateCreator<
 
     // 如果是 Frame，默认放到最底层 (zIndex 最小)
     // 如果是普通元素，放到最顶层 (zIndex 最大)
+    // 如果是文本，放到 2000
     let zIndex;
     if (element.type === 'frame') {
       const minZIndex = elements.reduce((min, el) => Math.min(min, el.zIndex), 0);
       zIndex = minZIndex - 1;
+    } else if (element.type === 'text') {
+      zIndex = 5000
     } else {
-      const maxZIndex = elements.reduce((max, el) => Math.max(max, el.zIndex), 0);
+      const maxZIndex = elements.filter(el => el.type !== 'text').reduce((max, el) => Math.max(max, el.zIndex), 0);
       zIndex = maxZIndex + 1;
     }
 
