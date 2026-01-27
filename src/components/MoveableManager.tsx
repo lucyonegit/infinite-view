@@ -97,8 +97,25 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
   }, [nestingKey, selectedIds, consumeSelectionEvent, interaction.editingId]); // 当层级结构（ParentID）变化时触发
 
   const elementGuidelines = useMemo(() => {
+    const selectedElements = selectedIds.map(id => elements.find(el => el.id === id)).filter(Boolean);
+    const parentIds = new Set(selectedElements.map(el => el!.parentId).filter(id => id !== undefined) as string[]);
+    
     return elements
-      .filter(el => !selectedIds.includes(el.id) && !el.parentId)
+      .filter(el => {
+        // 1. Don't snap to self or other selected elements
+        if (selectedIds.includes(el.id)) return false;
+        
+        // 2. Root elements are always guidelines
+        if (!el.parentId) return true;
+        
+        // 3. Siblings (elements in the same parent container)
+        if (parentIds.has(el.parentId)) return true;
+        
+        // 4. The parent Frame itself (to snap to its edges)
+        if (parentIds.has(el.id)) return true;
+
+        return false;
+      })
       .map(el => document.querySelector(`[data-element-id="${el.id}"]`) as HTMLElement)
       .filter(Boolean);
   }, [elements, selectedIds]);
