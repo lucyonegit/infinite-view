@@ -120,6 +120,30 @@ export const FloatingToolbar = memo(function FloatingToolbar({
 
           <div className="divider" />
           
+          {/* 圆角控制 - 仅针对矩形、Frame 和图片 */}
+          {(element?.type === 'rectangle' || element?.type === 'frame' || element?.type === 'image') && (
+            <div className="toolbar-item no-hover">
+              <span className="icon" title="圆角">▢</span>
+              <input
+                type="number"
+                className="number-input"
+                min="0"
+                max="500"
+                value={element.style?.borderRadius ?? ''}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  handleUpdateStyle({ 
+                    borderRadius: val === '' ? undefined : Math.max(0, parseInt(val) || 0) 
+                  });
+                }}
+                onClick={(e) => (e.target as HTMLInputElement).select()}
+                title="圆角大小"
+              />
+            </div>
+          )}
+
+          <div className="divider" />
+          
           <button className="toolbar-item more" title="更多">
             <span className="icon">...</span>
           </button>

@@ -177,3 +177,42 @@
   margin-bottom: 2px;
   flex-shrink: 0;
 }
+
+.number-input {
+  width: 40px;
+  height: 24px;
+  background: rgba(0, 0, 0, 0.05);
+  border: none;
+  border-radius: 4px;
+  padding: 0 4px;
+  font-size: 12px;
+  font-family: inherit;
+  color: #333;
+  outline: none;
+  text-align: center;
+  transition: background 0.2s;
+}
+
+.number-input:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.number-input:focus {
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 1px #1a73e8;
+}
+
+/* Hide number input arrows (spinners) */
+.number-input::-webkit-inner-spin-button,
+.number-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.toolbar-item.no-hover {
+  cursor: default;
+}
+
+.toolbar-item.no-hover:hover {
+  background: transparent;
+}
