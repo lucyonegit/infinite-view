@@ -36,6 +36,7 @@ export interface InteractionSliceActions {
   consumeSelectionEvent: () => MouseEvent | TouchEvent | null;
   selectAll: () => void;
   deselectAll: () => void;
+  setSelectedIds: (ids: string[]) => void;
   setInteraction: (interaction: Partial<InteractionState>) => void;
   startPanning: (startPoint: Point) => void;
   stopPanning: () => void;
@@ -102,6 +103,10 @@ export const createInteractionSlice: StateCreator<
 
   deselectAll: () => {
     set({ selectedIds: [], lastSelectionEvent: null });
+  },
+
+  setSelectedIds: (ids) => {
+    set({ selectedIds: ids });
   },
 
   // ========== 交互状态 ==========

@@ -19,6 +19,8 @@ export interface FrameSliceActions {
   findFrameAtPoint: (x: number, y: number, excludeIds?: string[]) => Element | null;
   setHoverFrame: (frameId: string | null) => void;
   getElementWorldPos: (id: string) => Point;
+  /** 同步元素的 Frame 嵌套状态 (基于鼠标/中心点世界坐标) */
+  syncFrameNesting: (elementId: string, worldPos: Point) => void;
 }
 
 export type FrameSlice = FrameSliceState & FrameSliceActions;
@@ -144,5 +146,46 @@ export const createFrameSlice: StateCreator<
 
   setHoverFrame: (frameId) => {
     set({ hoverFrameId: frameId });
+  },
+
+  syncFrameNesting: (elementId, mouseWorldPos) => {
+    const { elements, findFrameAtPoint, addToFrame, removeFromFrame } = get();
+    const element = elements.find(el => el.id === elementId);
+    if (!element || element.type === 'frame') return;
+
+    // 仅允许图片和矩形拖入 (按用户要求)
+    if (element.type !== 'image' && element.type !== 'rectangle') return;
+
+    // 1. 检查鼠标点下的 Frame (寻找潜在的新父节点)
+    const targetFrame = findFrameAtPoint(mouseWorldPos.x, mouseWorldPos.y, [elementId]);
+
+    if (targetFrame) {
+      if (element.parentId !== targetFrame.id) {
+        addToFrame(elementId, targetFrame.id);
+      }
+      return;
+    }
+
+    // 2. 如果当前在 Frame 中且鼠标已经移出所有 Frame，检查元素是否“完全移出”
+    if (element.parentId) {
+      const parentFrame = elements.find(el => el.id === element.parentId);
+      if (!parentFrame) return;
+
+      // 计算相对于父 Frame 的边界
+      const elementRight = element.x + element.width;
+      const elementBottom = element.y + element.height;
+      const frameRight = parentFrame.width;
+      const frameBottom = parentFrame.height;
+
+      const isCompletelyOutside =
+        elementRight <= 0 ||
+        element.x >= frameRight ||
+        elementBottom <= 0 ||
+        element.y >= frameBottom;
+
+      if (isCompletelyOutside) {
+        removeFromFrame(elementId);
+      }
+    }
   },
 });

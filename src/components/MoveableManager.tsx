@@ -133,13 +133,31 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
     const element = elements.find(el => el.id === id);
     if (!element || element.type === 'frame') return;
 
-    // Case 1: Element already has a parent Frame
+    // 1. Check if mouse is over a Frame (target for entry)
+    const targetFrame = findFrameAtPoint(mouseWorldX, mouseWorldY, selectedIds);
+    
+    if (targetFrame) {
+      // If mouse is over a frame and it's not the current parent, add it
+      if (element.parentId !== targetFrame.id) {
+        setHoverFrame(targetFrame.id);
+        addToFrame(id, targetFrame.id);
+        
+        requestAnimationFrame(() => {
+          if (moveableRef.current) {
+            moveableRef.current.updateTarget();
+            moveableRef.current.updateRect();
+          }
+        });
+      }
+      return; // Already found a frame under mouse, no need to check exit
+    }
+
+    // 2. If NO frame is under mouse, and element is currently in a frame, check if it should exit
     if (element.parentId) {
       const parentFrame = elements.find(el => el.id === element.parentId);
       if (!parentFrame) return;
 
       // Check if element is completely outside parent Frame (no overlap at all)
-      // Element position is relative to parent, so check against parent's local bounds
       const elementRight = element.x + element.width;
       const elementBottom = element.y + element.height;
       const frameRight = parentFrame.width;
@@ -152,6 +170,7 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
         element.y >= frameBottom;      // Completely below
 
       if (isCompletelyOutside) {
+        setHoverFrame(null);
         removeFromFrame(id);
         requestAnimationFrame(() => {
           if (moveableRef.current) {
@@ -160,28 +179,9 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
           }
         });
       }
-      return;
-    }
-
-    // Case 2: Root-level element - use mouse position to add to Frame
-    const targetFrame = findFrameAtPoint(mouseWorldX, mouseWorldY, selectedIds);
-    
-    if (targetFrame) {
-      if (hoverFrameId !== targetFrame.id) {
-        setHoverFrame(targetFrame.id);
-        addToFrame(id, targetFrame.id);
-        
-        requestAnimationFrame(() => {
-          if (moveableRef.current) {
-            moveableRef.current.updateTarget();
-            moveableRef.current.updateRect();
-          }
-        });
-      }
-    } else {
-      if (hoverFrameId) {
-        setHoverFrame(null);
-      }
+    } else if (hoverFrameId) {
+      // Mouse moved out of all frames and element is root-level
+      setHoverFrame(null);
     }
   }, [elements, findFrameAtPoint, selectedIds, hoverFrameId, setHoverFrame, addToFrame, removeFromFrame]);
 
