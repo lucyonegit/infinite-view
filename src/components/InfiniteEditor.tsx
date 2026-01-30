@@ -307,6 +307,16 @@ export function InfiniteEditor({ onBack }: { onBack?: () => void }) {
             )}
             <Transformer 
               ref={transformerRef}
+              enabledAnchors={['top-left', 'top-center', 'top-right', 'middle-right', 'bottom-right', 'bottom-center', 'bottom-left', 'middle-left']}
+              anchorSize={8}
+              anchorCornerRadius={2}
+              anchorFill="#fff"
+              anchorStroke="#1890ff"
+              anchorStrokeWidth={1}
+              borderStroke="#1890ff"
+              borderStrokeWidth={1}
+              rotateEnabled={true}
+              keepRatio={false}
               boundBoxFunc={(oldBox, newBox) => {
                 if (newBox.width < 5 || newBox.height < 5) return oldBox;
                 return newBox;
