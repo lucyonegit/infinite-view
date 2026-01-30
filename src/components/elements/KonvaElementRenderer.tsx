@@ -1,5 +1,5 @@
 import Konva from 'konva';
-import React, { useEffect, useState, useLayoutEffect, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Rect, Text, Group, Image as KonvaImage } from 'react-konva';
 import { useEditorStore } from '../../store/editorStore';
 import type { Element } from '../../types/editor';
@@ -13,44 +13,9 @@ interface KonvaElementRendererProps {
   onTransform?: (id: string, attrs: Partial<Element>) => void;
   onTransformEnd?: (id: string, attrs: Partial<Element>) => void;
   childrenElements?: Element[];
-  allElements?: Element[]; // 用于深度递归查找子元素
+  allElements?: Element[];
   selectedIds?: string[];
 }
-
-export const SizeLabel: React.FC<{ 
-  width: number; 
-  height: number; 
-  isSelected: boolean;
-  offsetY?: number;
-}> = ({ width, height, isSelected, offsetY = -35 }) => {
-  if (!isSelected) return null;
-  
-  const text = `${Math.round(width)} × ${Math.round(height)}`;
-  const fontSize = 12;
-  // Approximate width calculation
-  const labelWidth = text.length * 7 + 12;
-  const labelHeight = 20;
-
-  return (
-    <Group x={width - labelWidth} y={offsetY} listening={false}>
-      <Rect
-        width={labelWidth}
-        height={labelHeight}
-        fill="rgba(0,0,0,0.8)"
-        cornerRadius={4}
-      />
-      <Text
-        text={text}
-        fill="white"
-        fontSize={fontSize}
-        width={labelWidth}
-        height={labelHeight}
-        align="center"
-        verticalAlign="middle"
-      />
-    </Group>
-  );
-};
 
 export const KonvaElementRenderer: React.FC<KonvaElementRendererProps> = ({
   element,
@@ -68,19 +33,15 @@ export const KonvaElementRenderer: React.FC<KonvaElementRendererProps> = ({
   const lastPos = useRef<{ x: number; y: number } | null>(null);
   const nodeRef = useRef<Konva.Group>(null);
   
-  // 变换基础 - 用于在变换期间锁定 node.width/height，防止加速缩小的反馈环路
-  const [baseDimensions, setBaseDimensions] = useState<{ width: number; height: number } | null>(null);
-  // 实时尺寸 ref - 仅用于辅助 getClientRect
-  const liveDimensions = useRef({ width: element.width, height: element.height });
-  
+  // 基准捕获：使用 Ref 保证同步事件流中的数学稳定性，防止 Race Condition
+  const baselineRef = useRef({ w: 0, h: 0 });
+  const [currentScale, setCurrentScale] = useState({ sx: 1, sy: 1 });
+
   const { interaction, setInteraction } = useEditorStore();
+  const isTransforming = interaction.transformingId === element.id;
 
-  useLayoutEffect(() => {
-    liveDimensions.current = { width: element.width, height: element.height };
-  }, [element.width, element.height]);
-
-  // 处理拖拽恢复
-  useLayoutEffect(() => {
+  // 1. 处理拖拽恢复逻辑
+  useEffect(() => {
     if (interaction.draggingId === element.id && nodeRef.current) {
       const stage = nodeRef.current.getStage();
       const pointerPos = stage?.getRelativePointerPosition();
@@ -91,6 +52,7 @@ export const KonvaElementRenderer: React.FC<KonvaElementRendererProps> = ({
     }
   }, [element.id, interaction.draggingId]);
 
+  // 2. 处理图片加载
   useEffect(() => {
     if (element.type === 'image' && element.imageUrl) {
       const img = new window.Image();
@@ -99,15 +61,17 @@ export const KonvaElementRenderer: React.FC<KonvaElementRendererProps> = ({
     }
   }, [element.imageUrl, element.type]);
 
-  // Konva uses numeric values for colors and opacity
+  // 3. 通用变换逻辑
   const commonProps = {
     id: element.id,
     x: element.x,
     y: element.y,
-    // 【关键】变换期间锁定 width/height 为起始值，让 scaleX/Y 承担所有变化量的表征
-    width: baseDimensions ? baseDimensions.width : element.width,
-    height: baseDimensions ? baseDimensions.height : element.height,
-    rotation: element.rotation || 0,
+    // 变换期间锁定物理宽/高，避免 Transformer 的内部数学模型漂移
+    width: isTransforming ? baselineRef.current.w : element.width,
+    height: isTransforming ? baselineRef.current.h : element.height,
+    scaleX: isTransforming ? undefined : 1,
+    scaleY: isTransforming ? undefined : 1,
+    rotation: isTransforming ? undefined : (element.rotation || 0),
     draggable: true,
     opacity: element.style?.opacity ?? 1,
     onMouseDown: (e: Konva.KonvaEventObject<MouseEvent>) => {
@@ -118,11 +82,7 @@ export const KonvaElementRenderer: React.FC<KonvaElementRendererProps> = ({
       e.cancelBubble = true;
       const stage = e.target.getStage();
       const pointerPos = stage?.getRelativePointerPosition();
-      if (pointerPos) {
-        lastPos.current = { x: pointerPos.x, y: pointerPos.y };
-      } else {
-        lastPos.current = { x: e.target.x(), y: e.target.y() };
-      }
+      if (pointerPos) lastPos.current = { x: pointerPos.x, y: pointerPos.y };
       setInteraction({ draggingId: element.id });
     },
     onDragMove: (e: Konva.KonvaEventObject<DragEvent>) => {
@@ -130,10 +90,8 @@ export const KonvaElementRenderer: React.FC<KonvaElementRendererProps> = ({
       const stage = e.target.getStage();
       const pointerPos = stage?.getRelativePointerPosition();
       if (!lastPos.current || !pointerPos) return;
-      const deltaX = pointerPos.x - lastPos.current.x;
-      const deltaY = pointerPos.y - lastPos.current.y;
+      onDragMove?.(element.id, pointerPos.x - lastPos.current.x, pointerPos.y - lastPos.current.y);
       lastPos.current = { x: pointerPos.x, y: pointerPos.y };
-      onDragMove?.(element.id, deltaX, deltaY);
     },
     onDragEnd: (e: Konva.KonvaEventObject<DragEvent>) => {
       e.cancelBubble = true;
@@ -143,117 +101,92 @@ export const KonvaElementRenderer: React.FC<KonvaElementRendererProps> = ({
     },
     onTransformStart: (e: Konva.KonvaEventObject<Event>) => {
       e.cancelBubble = true;
-      const node = e.target as Konva.Node;
-      // 捕获起始尺寸
-      setBaseDimensions({
-        width: node.width(),
-        height: node.height(),
-      });
+      baselineRef.current = { w: element.width, h: element.height };
+      setCurrentScale({ sx: 1, sy: 1 });
+      setInteraction({ transformingId: element.id });
     },
     onTransform: (e: Konva.KonvaEventObject<Event>) => {
       e.cancelBubble = true;
       const node = e.target as Konva.Node;
-      if (!baseDimensions) return;
+      const sx = node.scaleX();
+      const sy = node.scaleY();
+      
+      setCurrentScale({ sx, sy });
 
-      const newWidth = Math.max(5, baseDimensions.width * node.scaleX());
-      const newHeight = Math.max(5, baseDimensions.height * node.scaleY());
-      
-      liveDimensions.current = { width: newWidth, height: newHeight };
-      
       onTransform?.(element.id, {
-        x: node.x(),
-        y: node.y(),
-        width: newWidth,
-        height: newHeight,
+        x: node.x(), y: node.y(),
+        width: Math.max(5, baselineRef.current.w * sx),
+        height: Math.max(5, baselineRef.current.h * sy),
         rotation: node.rotation(),
       });
     },
     onTransformEnd: (e: Konva.KonvaEventObject<Event>) => {
       e.cancelBubble = true;
       const node = e.target as Konva.Node;
-      if (!baseDimensions) return;
+      const finalWidth = Math.max(5, baselineRef.current.w * node.scaleX());
+      const finalHeight = Math.max(5, baselineRef.current.h * node.scaleY());
+      
+      setInteraction({ transformingId: null });
+      setCurrentScale({ sx: 1, sy: 1 });
 
-      const finalWidth = Math.max(5, baseDimensions.width * node.scaleX());
-      const finalHeight = Math.max(5, baseDimensions.height * node.scaleY());
-      const finalRotation = node.rotation();
-      const finalX = node.x();
-      const finalY = node.y();
-
-      // 清除变换态
-      setBaseDimensions(null);
-
-      // 同步最终物理属性到 Node
-      node.setAttrs({
-        scaleX: 1,
-        scaleY: 1,
-        width: finalWidth,
-        height: finalHeight,
-      });
-
+      // 手动规整 node 属性，接管 React 下次渲染
+      node.setAttrs({ scaleX: 1, scaleY: 1, width: finalWidth, height: finalHeight });
+      
       onTransformEnd?.(element.id, {
-        x: finalX,
-        y: finalY,
-        width: finalWidth,
-        height: finalHeight,
-        rotation: finalRotation,
+        x: node.x(), y: node.y(), width: finalWidth, height: finalHeight, rotation: node.rotation(),
       });
     },
   };
 
   if (element.type === 'frame') {
+    const { sx, sy } = currentScale;
+    const visualW = isTransforming ? baselineRef.current.w : element.width;
+    const visualH = isTransforming ? baselineRef.current.h : element.height;
+
     return (
       <Group 
         {...commonProps} 
-        ref={nodeRef}
-        clipX={0} 
-        clipY={0} 
-        clipWidth={element.width} 
-        clipHeight={element.height}
-        // getClientRect must return the ACTUAL visual bounds of the Frame
-        // We calculate width * scaleX to get the true visual size, ignoring children
-        getClientRect={() => {
-          const node = nodeRef.current;
-          if (!node) return { x: 0, y: 0, width: 0, height: 0 };
-          
-          // Calculate the ACTUAL visual size: node's local size * current scale
-          const visualWidth = node.width() * node.scaleX();
-          const visualHeight = node.height() * node.scaleY();
-          const absPos = node.getAbsolutePosition();
-          
-          return {
-            x: absPos.x,
-            y: absPos.y,
-            width: visualWidth,
-            height: visualHeight
-          };
+        ref={(node) => {
+          if (node && element.type === 'frame') {
+            // 【终极绝杀】必须直接修改实例方法。React-Konva 的 Prop 无法重写方法。
+            // 强制 Transformer 的计算基准固定在背景矩形上，零误差忽略子元素。
+            node.getClientRect = function(config?: any) {
+              const bg = this.findOne('.frame-background');
+              if (bg) return bg.getClientRect(config);
+              return { x: 0, y: 0, width: 0, height: 0 };
+            };
+          }
+          // @ts-ignore
+          nodeRef.current = node;
         }}
+        clipX={0} clipY={0} 
+        clipWidth={visualW} clipHeight={visualH}
       >
-        {/* Frame Background */}
+        {/* 背景：作为视觉主控，同时是 Transformer 的计算源 */}
         <Rect
           name="frame-background"
-          width={element.width}
-          height={element.height}
+          className="frame-background"
+          width={visualW * sx}
+          height={visualH * sy}
+          scaleX={1 / sx} scaleY={1 / sy}
           fill={element.style?.backgroundColor || '#fff'}
           cornerRadius={element.style?.borderRadius || 0}
           stroke={isSelected ? '#1890ff' : (element.style?.stroke || 'transparent')}
           strokeWidth={isSelected ? 2 : (element.style?.strokeWidth || 0)}
-          strokeScaleEnabled={false} // 防拉伸：缩放时保持线条粗细不变
+          strokeScaleEnabled={false}
         />
-        {/* Nested Elements - 包裹在独立的 Group 内并返回空包围盒，彻底隔离子元素对 Frame 包围盒的影响 */}
-        <Group getClientRect={() => ({ x: 0, y: 0, width: 0, height: 0 })}>
+        {/* 子元素：isTransforming 时 listening=false，防止事件穿透干扰 Transformer Handles */}
+        <Group 
+          scaleX={1 / sx} scaleY={1 / sy} 
+          listening={!isTransforming}
+        >
           {[...childrenElements].sort((a, b) => a.zIndex - b.zIndex).map(child => (
             <KonvaElementRenderer
-              key={child.id}
-              element={child}
-              isSelected={selectedIds.includes(child.id)}
-              allElements={allElements}
-              selectedIds={selectedIds}
+              key={child.id} element={child} isSelected={selectedIds.includes(child.id)}
+              allElements={allElements} selectedIds={selectedIds}
               childrenElements={allElements.filter(c => c.parentId === child.id)}
-              onSelect={onSelect}
-              onDragMove={onDragMove}
-              onDragEnd={onDragEnd}
-              onTransform={onTransform}
-              onTransformEnd={onTransformEnd}
+              onSelect={onSelect} onDragMove={onDragMove} onDragEnd={onDragEnd}
+              onTransform={onTransform} onTransformEnd={onTransformEnd}
             />
           ))}
         </Group>
@@ -261,13 +194,12 @@ export const KonvaElementRenderer: React.FC<KonvaElementRendererProps> = ({
     );
   }
 
+  // Rectangle, Image, Text
   switch (element.type) {
     case 'rectangle':
       return (
         <Group {...commonProps} ref={nodeRef}>
-          <Rect
-            width={element.width}
-            height={element.height}
+          <Rect width={element.width} height={element.height}
             fill={element.style?.backgroundColor || element.style?.fill || '#eee'}
             cornerRadius={element.style?.borderRadius || 0}
             stroke={isSelected ? '#1890ff' : (element.style?.stroke || 'transparent')}
@@ -280,44 +212,21 @@ export const KonvaElementRenderer: React.FC<KonvaElementRendererProps> = ({
       return (
         <Group {...commonProps} ref={nodeRef}>
           {image ? (
-            <KonvaImage
-              image={image}
-              width={element.width}
-              height={element.height}
-              cornerRadius={element.style?.borderRadius || 0}
-            />
+            <KonvaImage image={image} width={element.width} height={element.height} cornerRadius={element.style?.borderRadius || 0} />
           ) : (
-            <Rect
-              width={element.width}
-              height={element.height}
-              fill="#eee"
-              cornerRadius={element.style?.borderRadius || 0}
-            />
+            <Rect width={element.width} height={element.height} fill="#eee" cornerRadius={element.style?.borderRadius || 0} />
           )}
           {isSelected && (
-            <Rect
-              width={element.width}
-              height={element.height}
-              stroke="#1890ff"
-              strokeWidth={2}
-              cornerRadius={element.style?.borderRadius || 0}
-              listening={false}
-            />
+            <Rect width={element.width} height={element.height} stroke="#1890ff" strokeWidth={2} cornerRadius={element.style?.borderRadius || 0} listening={false} />
           )}
         </Group>
       );
     case 'text':
       return (
         <Group {...commonProps} ref={nodeRef}>
-          <Text
-            width={element.width}
-            height={element.height}
-            text={element.content || ''}
-            fontSize={element.style?.fontSize || 14}
-            fontFamily={element.style?.fontFamily || 'Arial'}
-            fill={element.style?.fill || '#000'}
-            align={element.style?.textAlign || 'left'}
-            verticalAlign="middle"
+          <Text width={element.width} height={element.height} text={element.content || ''}
+            fontSize={element.style?.fontSize || 14} fontFamily={element.style?.fontFamily || 'Arial'}
+            fill={element.style?.fill || '#000'} align={element.style?.textAlign || 'left'} verticalAlign="middle"
           />
         </Group>
       );
@@ -326,20 +235,22 @@ export const KonvaElementRenderer: React.FC<KonvaElementRendererProps> = ({
   }
 };
 
-export const TypeLabel: React.FC<{ text: string }> = ({ text }) => {
-  const fontSize = 12;
-  const labelHeight = 20;
-
+export const SizeLabel: React.FC<{ 
+  width: number; height: number; isSelected: boolean; offsetY?: number;
+}> = ({ width, height, isSelected, offsetY = -35 }) => {
+  if (!isSelected) return null;
+  const text = `${Math.round(width)} × ${Math.round(height)}`;
+  const labelW = text.length * 7 + 12;
   return (
-    <Group y={-labelHeight - 4} listening={false}>
-      <Text
-        text={text}
-        fill="#666"
-        fontSize={fontSize}
-        fontStyle="bold"
-        height={labelHeight}
-        verticalAlign="middle"
-      />
+    <Group x={width - labelW} y={offsetY} listening={false}>
+      <Rect width={labelW} height={20} fill="rgba(0,0,0,0.8)" cornerRadius={4} />
+      <Text text={text} fill="white" fontSize={12} width={labelW} height={20} align="center" verticalAlign="middle" />
     </Group>
   );
 };
+
+export const TypeLabel: React.FC<{ text: string }> = ({ text }) => (
+  <Group y={-24} listening={false}>
+    <Text text={text} fill="#666" fontSize={12} fontStyle="bold" height={20} verticalAlign="middle" />
+  </Group>
+);

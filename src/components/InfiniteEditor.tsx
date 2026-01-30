@@ -84,6 +84,11 @@ export function InfiniteEditor({ onBack }: { onBack?: () => void }) {
   // ============ Transformer 逻辑 ============
 
   useEffect(() => {
+    // 【核心性能修复】如果当前正在变换（缩放/旋转），严禁重新同步 nodes。
+    // 因为重新同步会导致 Transformer 丢弃旧的数学基准并基于重绘后的 Node 建立新基准，
+    // 这会在每一帧产生指数级的累积（Exponential Acceleration）。
+    if (interaction.transformingId) return;
+
     if (transformerRef.current && stageRef.current) {
       const stage = stageRef.current;
       const transformer = transformerRef.current;
@@ -95,7 +100,7 @@ export function InfiniteEditor({ onBack }: { onBack?: () => void }) {
       transformer.nodes(selectedNodes);
       transformer.getLayer()?.batchDraw();
     }
-  }, [selectedIds, elements]);
+  }, [selectedIds, elements.length, interaction.transformingId]); // 仅在选中项、数量变化或变换状态改变时同步
 
   // ============ 交互逻辑 ============
 

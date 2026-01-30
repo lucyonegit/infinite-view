@@ -11,6 +11,7 @@ const initialInteraction: InteractionState = {
   isCreating: false,
   editingId: null,
   draggingId: null,
+  transformingId: null,
 };
 
 // ============ Slice 接口 ============

@@ -102,6 +102,8 @@ export interface InteractionState {
   editingId?: string | null;
   /** 正在拖拽中的元素 ID (用于处理 Konva 节点重挂载后的拖拽恢复) */
   draggingId?: string | null;
+  /** 正在变换（缩放/旋转）中的元素 ID */
+  transformingId?: string | null;
 }
 
 // ============ 编辑器状态 ============
