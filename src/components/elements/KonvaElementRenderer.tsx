@@ -1,6 +1,7 @@
 import Konva from 'konva';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useLayoutEffect, useRef } from 'react';
 import { Rect, Text, Group, Image as KonvaImage } from 'react-konva';
+import { useEditorStore } from '../../store/editorStore';
 import type { Element } from '../../types/editor';
 
 interface KonvaElementRendererProps {
@@ -64,7 +65,26 @@ export const KonvaElementRenderer: React.FC<KonvaElementRendererProps> = ({
   selectedIds = [],
 }) => {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
-  const lastPos = React.useRef<{ x: number; y: number } | null>(null);
+  const lastPos = useRef<{ x: number; y: number } | null>(null);
+  const nodeRef = useRef<Konva.Group>(null);
+  
+  const { interaction, setInteraction } = useEditorStore();
+
+  // 处理拖拽恢复：如果组件在拖拽过程中因为父级变化而重挂载
+  useLayoutEffect(() => {
+    if (interaction.draggingId === element.id && nodeRef.current) {
+      const stage = nodeRef.current.getStage();
+      const pointerPos = stage?.getRelativePointerPosition();
+      
+      if (pointerPos) {
+        // 恢复上一次位置记录，确保下一次 onDragMove 的 delta 是正确的
+        lastPos.current = { x: pointerPos.x, y: pointerPos.y };
+        
+        // 关键：手动触发 Konva 的拖拽 session
+        nodeRef.current.startDrag();
+      }
+    }
+  }, [element.id, interaction.draggingId]);
 
   useEffect(() => {
     if (element.type === 'image' && element.imageUrl) {
@@ -91,6 +111,7 @@ export const KonvaElementRenderer: React.FC<KonvaElementRendererProps> = ({
       onSelect?.(element.id, e.evt.shiftKey);
     },
     onDragStart: (e: Konva.KonvaEventObject<DragEvent>) => {
+      e.cancelBubble = true;
       const stage = e.target.getStage();
       const pointerPos = stage?.getRelativePointerPosition();
       if (pointerPos) {
@@ -98,8 +119,10 @@ export const KonvaElementRenderer: React.FC<KonvaElementRendererProps> = ({
       } else {
         lastPos.current = { x: e.target.x(), y: e.target.y() };
       }
+      setInteraction({ draggingId: element.id });
     },
     onDragMove: (e: Konva.KonvaEventObject<DragEvent>) => {
+      e.cancelBubble = true;
       const stage = e.target.getStage();
       const pointerPos = stage?.getRelativePointerPosition();
       
@@ -113,7 +136,9 @@ export const KonvaElementRenderer: React.FC<KonvaElementRendererProps> = ({
       onDragMove?.(element.id, deltaX, deltaY);
     },
     onDragEnd: (e: Konva.KonvaEventObject<DragEvent>) => {
+      e.cancelBubble = true;
       lastPos.current = null;
+      setInteraction({ draggingId: null });
       onDragEnd?.(element.id, e.target.x(), e.target.y());
     },
     onTransform: (e: Konva.KonvaEventObject<Event>) => {
@@ -144,6 +169,7 @@ export const KonvaElementRenderer: React.FC<KonvaElementRendererProps> = ({
     return (
       <Group 
         {...commonProps} 
+        ref={nodeRef}
         clipX={0} 
         clipY={0} 
         clipWidth={element.width} 
@@ -181,7 +207,7 @@ export const KonvaElementRenderer: React.FC<KonvaElementRendererProps> = ({
   switch (element.type) {
     case 'rectangle':
       return (
-        <Group {...commonProps}>
+        <Group {...commonProps} ref={nodeRef}>
           <Rect
             width={element.width}
             height={element.height}
@@ -194,7 +220,7 @@ export const KonvaElementRenderer: React.FC<KonvaElementRendererProps> = ({
       );
     case 'image':
       return (
-        <Group {...commonProps}>
+        <Group {...commonProps} ref={nodeRef}>
           {image ? (
             <KonvaImage
               image={image}
@@ -224,7 +250,7 @@ export const KonvaElementRenderer: React.FC<KonvaElementRendererProps> = ({
       );
     case 'text':
       return (
-        <Group {...commonProps}>
+        <Group {...commonProps} ref={nodeRef}>
           <Text
             width={element.width}
             height={element.height}

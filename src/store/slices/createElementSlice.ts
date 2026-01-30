@@ -133,13 +133,24 @@ export const createElementSlice: StateCreator<
   },
 
   moveElements: (ids, deltaX, deltaY) => {
-    set((state) => ({
-      elements: state.elements.map((el) =>
-        ids.includes(el.id)
-          ? { ...el, x: el.x + deltaX, y: el.y + deltaY }
-          : el
-      ),
-    }));
+    set((state) => {
+      // 找出所有需要移动的元素中，排除掉那些“父节点也在移动名单中”的元素
+      // 因为父节点移动时，子节点会随之移动，重复更新坐标会导致双倍偏移
+      const topLevelIds = ids.filter(id => {
+        const el = state.elements.find(e => e.id === id);
+        if (!el || !el.parentId) return true;
+        // 如果父节点不在移动名单中，则该元素需要手动移动
+        return !ids.includes(el.parentId);
+      });
+
+      return {
+        elements: state.elements.map((el) =>
+          topLevelIds.includes(el.id)
+            ? { ...el, x: el.x + deltaX, y: el.y + deltaY }
+            : el
+        ),
+      };
+    });
   },
 
   resizeElement: (id, bounds) => {

@@ -10,6 +10,7 @@ const initialInteraction: InteractionState = {
   isMarqueeSelecting: false,
   isCreating: false,
   editingId: null,
+  draggingId: null,
 };
 
 // ============ Slice 接口 ============

@@ -100,6 +100,8 @@ export interface InteractionState {
   creatingType?: ElementType;
   /** 正在编辑中的元素 ID */
   editingId?: string | null;
+  /** 正在拖拽中的元素 ID (用于处理 Konva 节点重挂载后的拖拽恢复) */
+  draggingId?: string | null;
 }
 
 // ============ 编辑器状态 ============

@@ -19,8 +19,10 @@ export interface FrameSliceActions {
   findFrameAtPoint: (x: number, y: number, excludeIds?: string[]) => Element | null;
   setHoverFrame: (frameId: string | null) => void;
   getElementWorldPos: (id: string) => Point;
-  /** 同步元素的 Frame 嵌套状态 (基于鼠标/中心点世界坐标) */
-  syncFrameNesting: (elementId: string, worldPos: Point) => void;
+  /** 同步元素的 Frame 嵌套状态 (基于鼠标/中心点世界坐标)
+   * @returns 是否发生了父级变化 (true = 父级变了，坐标已转换，不需要再应用 delta)
+   */
+  syncFrameNesting: (elementId: string, worldPos: Point) => boolean;
 }
 
 export type FrameSlice = FrameSliceState & FrameSliceActions;
@@ -71,13 +73,13 @@ export const createFrameSlice: StateCreator<
     // 计算世界坐标
     const worldPos = getElementWorldPos(elementId);
     const frameWorldPos = getElementWorldPos(frameId);
+    const relativeX = worldPos.x - frameWorldPos.x;
+    const relativeY = worldPos.y - frameWorldPos.y;
 
     set((state) => ({
       elements: state.elements.map((el) => {
         if (el.id === elementId) {
           // 将世界坐标转换为相对于新 frame 的相对坐标
-          const relativeX = worldPos.x - frameWorldPos.x;
-          const relativeY = worldPos.y - frameWorldPos.y;
           return { ...el, parentId: frameId, x: relativeX, y: relativeY };
         }
         if (el.id === frameId) {
@@ -148,13 +150,13 @@ export const createFrameSlice: StateCreator<
     set({ hoverFrameId: frameId });
   },
 
-  syncFrameNesting: (elementId, mouseWorldPos) => {
+  syncFrameNesting: (elementId, mouseWorldPos): boolean => {
     const { elements, findFrameAtPoint, addToFrame, removeFromFrame } = get();
     const element = elements.find(el => el.id === elementId);
-    if (!element || element.type === 'frame') return;
+    if (!element || element.type === 'frame') return false;
 
     // 仅允许图片和矩形拖入 (按用户要求)
-    if (element.type !== 'image' && element.type !== 'rectangle') return;
+    if (element.type !== 'image' && element.type !== 'rectangle') return false;
 
     // 1. 检查鼠标点下的 Frame (寻找潜在的新父节点)
     const targetFrame = findFrameAtPoint(mouseWorldPos.x, mouseWorldPos.y, [elementId]);
@@ -162,14 +164,15 @@ export const createFrameSlice: StateCreator<
     if (targetFrame) {
       if (element.parentId !== targetFrame.id) {
         addToFrame(elementId, targetFrame.id);
+        return true; // 父级变了，坐标已转换
       }
-      return;
+      return false;
     }
 
-    // 2. 如果当前在 Frame 中且鼠标已经移出所有 Frame，检查元素是否“完全移出”
+    // 2. 如果当前在 Frame 中且鼠标已经移出所有 Frame，检查元素是否"完全移出"
     if (element.parentId) {
       const parentFrame = elements.find(el => el.id === element.parentId);
-      if (!parentFrame) return;
+      if (!parentFrame) return false;
 
       // 计算相对于父 Frame 的边界
       const elementRight = element.x + element.width;
@@ -185,7 +188,9 @@ export const createFrameSlice: StateCreator<
 
       if (isCompletelyOutside) {
         removeFromFrame(elementId);
+        return true; // 父级变了，坐标已转换
       }
     }
+    return false;
   },
 });

@@ -32,6 +32,7 @@ export function InfiniteEditor({ onBack }: { onBack?: () => void }) {
     finishCreating,
     reorderElements,
     syncFrameNesting,
+    getElementWorldPos,
   } = useEditorStore();
 
   // ============ 坐标转换 ============
@@ -175,17 +176,18 @@ export function InfiniteEditor({ onBack }: { onBack?: () => void }) {
     selectedIds.forEach(id => {
       const el = elements.find(e => e.id === id);
       if (el) {
-        minX = Math.min(minX, el.x);
-        minY = Math.min(minY, el.y);
-        maxX = Math.max(maxX, el.x + el.width);
-        maxY = Math.max(maxY, el.y + el.height);
+        const worldPos = getElementWorldPos(id);
+        minX = Math.min(minX, worldPos.x);
+        minY = Math.min(minY, worldPos.y);
+        maxX = Math.max(maxX, worldPos.x + el.width);
+        maxY = Math.max(maxY, worldPos.y + el.height);
       }
     });
     return minX === Infinity ? null : { 
       x: minX, y: minY, width: maxX - minX, height: maxY - minY, 
       centerX: minX + (maxX - minX) / 2 
     };
-  }, [selectedIds, elements]);
+  }, [selectedIds, elements, getElementWorldPos]);
 
   return (
     <div className="infinite-editor">
@@ -253,13 +255,15 @@ export function InfiniteEditor({ onBack }: { onBack?: () => void }) {
                   }
                 }}
                 onDragMove={(id, deltaX, deltaY) => {
+                  // 关键：先更新元素位置到新位置
                   if (selectedIds.includes(id)) {
                     moveElements(selectedIds, deltaX, deltaY);
                   } else {
                     moveElements([id], deltaX, deltaY);
                   }
 
-                  // 检查 Frame 嵌套
+                  // 然后检查 Frame 嵌套（使用已更新的位置）
+                  // addToFrame/removeFromFrame 会基于新的世界坐标计算相对坐标
                   const stage = stageRef.current;
                   if (stage) {
                     const pointerPos = stage.getRelativePointerPosition();
@@ -268,10 +272,11 @@ export function InfiniteEditor({ onBack }: { onBack?: () => void }) {
                     }
                   }
                 }}
-                onDragEnd={(id, x, y) => {
-                  if (!selectedIds.includes(id) || selectedIds.length <= 1) {
-                    updateElement(id, { x, y });
-                  }
+                onDragEnd={() => {
+                  // 不在这里更新坐标！
+                  // 原因：onDragMove 已经通过 moveElements 更新了正确的坐标
+                  // 如果在这里用 Konva 节点的 x/y，当元素父级变化后节点被重建，
+                  // 返回的可能是错误的坐标，会覆盖 addToFrame 计算的正确相对坐标
                 }}
                 onTransform={(id, attrs) => updateElement(id, attrs)}
                 onTransformEnd={(id, attrs) => updateElement(id, attrs)}
@@ -333,27 +338,31 @@ export function InfiniteEditor({ onBack }: { onBack?: () => void }) {
             )}
             {elements.map(el => {
               if (el.type !== 'frame' && el.type !== 'image') return null;
+              const worldPos = getElementWorldPos(el.id);
               return (
-                <Group key={`type-label-${el.id}`} x={el.x} y={el.y}>
+                <Group key={`type-label-${el.id}`} x={worldPos.x} y={worldPos.y}>
                   <TypeLabel text={`#${el.type}`} />
                 </Group>
               );
             })}
-            {elements.map(el => (
-              <Group 
-                key={`label-${el.id}`}
-                x={el.x} 
-                y={el.y} 
-                rotation={el.rotation}
-              >
-                <SizeLabel 
-                  width={el.width} 
-                  height={el.height} 
-                  isSelected={true} 
-                  offsetY={-35} 
-                />
-              </Group>
-            ))}
+            {elements.map(el => {
+              const worldPos = getElementWorldPos(el.id);
+              return (
+                <Group 
+                  key={`label-${el.id}`}
+                  x={worldPos.x} 
+                  y={worldPos.y} 
+                  rotation={el.rotation}
+                >
+                  <SizeLabel 
+                    width={el.width} 
+                    height={el.height} 
+                    isSelected={true} 
+                    offsetY={-35} 
+                  />
+                </Group>
+              );
+            })}
           </Layer>
         </Stage>
       </div>
