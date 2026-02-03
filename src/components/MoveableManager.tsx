@@ -269,11 +269,11 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
         // 侧边缩放：仅改变宽度，允许换行（高度将由 ResizeObserver 自动更新）
         // 标记为已设置固定宽度
         target.style.width = `${newWidth}px`;
-        target.style.transform = `translate(${drag.beforeTranslate[0]}px, ${drag.beforeTranslate[1]}px)`;
+        // target.style.transform = `translate(${drag.beforeTranslate[0]}px, ${drag.beforeTranslate[1]}px)`;
         
         updateElement(id, {
-          x: element.x + drag.beforeTranslate[0],
-          y: element.y + drag.beforeTranslate[1],
+          x: element.x,
+          y: element.y,
           width: newWidth,
           fixedWidth: true, // 一旦手动调整宽度，就进入固定宽度模式
         });
