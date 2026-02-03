@@ -54,12 +54,24 @@ export function SelectoManager() {
     const elementId = element?.getAttribute('data-element-id');
     isDragStartOnElement.current = !!elementId;
 
-    // 如果点击的是【已选中元素】（且没有按住 Shift）
-    // 特殊处理：因为某些元素（如 Text）层级可能高于 Moveable 覆盖层，导致常规拖拽失效
-    // 我们手动触发一次选择，通过 store 驱动 Moveable 开启立即拖拽
-    if (elementId && selectedIds.includes(elementId) && !inputEvent.shiftKey) {
-      selectElements([...selectedIds], false, inputEvent);
-      stop(); // 停止 Selecto，通过 Moveable 驱动拖拽
+    // 如果点击的是元素 (不管是否已选中)
+    if (elementId) {
+      if (inputEvent.shiftKey) {
+        // Shift 点击：切换选中状态
+        const isAlreadySelected = selectedIds.includes(elementId);
+        const newSelection = isAlreadySelected 
+          ? selectedIds.filter(id => id !== elementId)
+          : [...selectedIds, elementId];
+        
+        // 取消选中时不触发拖拽，添加选中时触发
+        const eventToPass = isAlreadySelected ? undefined : inputEvent;
+        selectElements(newSelection, false, eventToPass);
+      } else {
+        // 普通点击/拖拽：选中该元素
+        // 传递 inputEvent 以便 MoveableManager 能够启动拖拽
+        selectElements([elementId], false, inputEvent);
+      }
+      stop(); // 停止 Selecto，通过 Moveable 驱动拖拽/选择
       return;
     }
   };

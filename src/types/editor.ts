@@ -49,6 +49,9 @@ export interface ElementStyle {
   backgroundColor?: string;
   fontSize?: number;
   fontFamily?: string;
+  fontWeight?: string | number;
+  fontStyle?: string;
+  textDecoration?: string;
   textAlign?: 'left' | 'center' | 'right';
 }
 

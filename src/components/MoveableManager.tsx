@@ -21,6 +21,23 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
   const moveableRef = useRef<Moveable>(null);
   const lastEvent = useRef<MouseEvent | TouchEvent | null>(null);
   
+  // 追踪全局鼠标状态，用于拦截快速点击导致的幽灵拖拽
+  const isMouseDown = useRef(false);
+  useEffect(() => {
+    const handleDown = (e: MouseEvent) => {
+      if (e.button === 0) isMouseDown.current = true;
+    };
+    const handleUp = (e: MouseEvent) => {
+      if (e.button === 0) isMouseDown.current = false;
+    };
+    window.addEventListener('mousedown', handleDown, true);
+    window.addEventListener('mouseup', handleUp, true);
+    return () => {
+      window.removeEventListener('mousedown', handleDown, true);
+      window.removeEventListener('mouseup', handleUp, true);
+    };
+  }, []);
+
   const { 
     updateElement, 
     findFrameAtPoint, 
@@ -73,7 +90,9 @@ export const MoveableManager = memo(function MoveableManager({ zoom, elements, s
       // 必须确保 Moveable 已经收到了新的 targets 属性
       // 使用 requestAnimationFrame 保证在下一帧（Moveable 渲染后）立即开始拖拽
       requestAnimationFrame(() => {
-        if (moveableRef.current) {
+        // 关键修复：只有当鼠标仍然按下时，才启动拖拽
+        // 如果是极速点击，此时鼠标可能已经抬起，必须放弃 dragStart 否则会产生幽灵拖拽
+        if (moveableRef.current && isMouseDown.current) {
           moveableRef.current.dragStart(selectionEvent);
         }
       });
