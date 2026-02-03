@@ -9,6 +9,7 @@ import { createViewportSlice, type ViewportSlice } from './slices/createViewport
 import { createElementSlice, type ElementSlice } from './slices/createElementSlice';
 import { createInteractionSlice, type InteractionSlice } from './slices/createInteractionSlice';
 import { createFrameSlice, type FrameSlice } from './slices/createFrameSlice';
+import { createFontSlice, type FontSlice } from './slices/createFontSlice';
 
 // ============ 组合 Store 接口 ============
 
@@ -19,7 +20,8 @@ interface EditorStore extends
   ViewportSlice,
   ElementSlice,
   InteractionSlice,
-  FrameSlice {
+  FrameSlice,
+  FontSlice {
   // 数据导入导出 (持久化预留接口)
   exportData: () => EditorDataExport;
   importData: (data: EditorDataExport) => void;
@@ -52,6 +54,7 @@ export const useEditorStore = create<EditorStore>()((...args) => {
     ...createElementSlice(...args),
     ...createInteractionSlice(...args),
     ...createFrameSlice(...args),
+    ...createFontSlice(...args),
 
     // ========== 数据导入导出 ==========
 

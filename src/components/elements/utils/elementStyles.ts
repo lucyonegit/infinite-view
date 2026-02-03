@@ -19,6 +19,8 @@ export function getElementStyles(element: Element): React.CSSProperties {
     opacity: style.opacity,
     fontSize: style.fontSize,
     fontFamily: style.fontFamily,
+    fontWeight: style.fontWeight,
+    fontStyle: style.fontStyle,
     textAlign: style.textAlign,
   };
 }

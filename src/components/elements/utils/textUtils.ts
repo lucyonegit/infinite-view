@@ -8,11 +8,12 @@ export function getTextCommonStyle(element: Element): React.CSSProperties {
   const fontSize = element.style?.fontSize || 24;
   return {
     fontSize: fontSize,
-    fontFamily: element.style?.fontFamily || 'sans-serif',
+    fontFamily: element.style?.fontFamily || 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
     textAlign: element.style?.textAlign || 'left',
     color: element.style?.fill || '#333',
     fontWeight: element.style?.fontWeight || 'normal',
     fontStyle: element.style?.fontStyle || 'normal',
+    fontSynthesis: 'weight style', // 强制浏览器在字体缺少对应变体时进行合成
     textDecoration: element.style?.textDecoration || 'none',
     backgroundColor: element.style?.backgroundColor || 'transparent',
     padding: 0,
