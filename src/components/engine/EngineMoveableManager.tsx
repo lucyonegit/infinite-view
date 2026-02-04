@@ -1,10 +1,9 @@
-import { useRef, useEffect, useMemo, useCallback, memo, useState, useLayoutEffect } from 'react';
+import { useRef, useEffect, useMemo, memo, useState, useLayoutEffect } from 'react';
 import Moveable, { type OnDrag, type OnResize, type OnDragGroup, type OnResizeGroup } from 'react-moveable';
 import { useEngineInstance } from '../../core/react/EditorProvider';
 import { useEditorEngine } from '../../core/react/useEditorEngine';
 import { useCoordinateSystem } from '../../hooks/useCoordinateSystem';
 import type { Element } from '../../types/editor';
-import { calculateNewFontSize } from '../elements/utils/textUtils';
 
 interface MoveableManagerProps {
   zoom: number;
@@ -24,7 +23,6 @@ export const EngineMoveableManager = memo(function EngineMoveableManager({ zoom,
   // 1. 订阅引擎状态
   const viewport = useEditorEngine(engine, s => s.viewport);
   const interaction = useEditorEngine(engine, s => s.interaction);
-  const hoverFrameId = useEditorEngine(engine, s => s.hoverFrameId);
 
   useEffect(() => {
     const handleDown = (e: MouseEvent) => { if (e.button === 0) isMouseDown.current = true; };
@@ -113,101 +111,39 @@ export const EngineMoveableManager = memo(function EngineMoveableManager({ zoom,
 
   const { screenToWorld } = useCoordinateSystem(zoom, viewport.x, viewport.y);
 
-  const checkFrameHover = useCallback((id: string, mouseWorldX: number, mouseWorldY: number) => {
-    const element = elements.find(el => el.id === id);
-    if (!element || element.type === 'frame') return;
-
-    if (element.parentId) {
-      const parentFrame = elements.find(el => el.id === element.parentId);
-      if (!parentFrame) return;
-
-      const elementRight = element.x + element.width;
-      const elementBottom = element.y + element.height;
-      if (elementRight <= 0 || element.x >= parentFrame.width || elementBottom <= 0 || element.y >= parentFrame.height) {
-        engine.removeFromFrame(id);
-        requestAnimationFrame(() => {
-          if (moveableRef.current) {
-            moveableRef.current.updateTarget();
-            moveableRef.current.updateRect();
-          }
-        });
-      }
-      return;
-    }
-
-    // 使用引擎中的 findFrameAtPoint 方法
-    const targetFrame = engine.findFrameAtPoint(mouseWorldX, mouseWorldY, selectedIds);
-    
-    if (targetFrame) {
-      if (hoverFrameId !== targetFrame.id) {
-        engine.setHoverFrame(targetFrame.id);
-        engine.addToFrame(id, targetFrame.id);
-        requestAnimationFrame(() => {
-          if (moveableRef.current) {
-            moveableRef.current.updateTarget();
-            moveableRef.current.updateRect();
-          }
-        });
-      }
-    } else if (hoverFrameId) {
-      engine.setHoverFrame(null);
-    }
-  }, [elements, selectedIds, hoverFrameId, engine]);
-
   const handleDrag = ({ target, delta, inputEvent }: OnDrag) => {
     const id = target.getAttribute('data-element-id');
     if (id) {
       lastEvent.current = inputEvent;
-      const element = engine.getState().elements.find(el => el.id === id);
-      if (element) {
-        const isParentAlsoSelected = element.parentId && selectedIds.includes(element.parentId);
-        if (!isParentAlsoSelected) {
-          engine.updateElement(id, { x: element.x + delta[0], y: element.y + delta[1] });
-          const mouseWorld = screenToWorld(inputEvent.clientX, inputEvent.clientY);
-          checkFrameHover(id, mouseWorld.x, mouseWorld.y);
-        }
-      }
+      const mouseWorld = screenToWorld(inputEvent.clientX, inputEvent.clientY);
+      engine.handleDrag([id], [delta[0], delta[1]], mouseWorld);
     }
   };
 
   const handleResize = ({ target, width, height, drag, direction }: OnResize) => {
     const id = target.getAttribute('data-element-id');
     if (!id) return;
-    const element = elements.find(el => el.id === id);
-    if (!element) return;
-
+    
+    const isCorner = direction[0] !== 0 && direction[1] !== 0;
     const newWidth = Math.floor(width);
     const newHeight = Math.floor(height);
-    
-    if (element.type === 'text') {
-      const isCorner = direction[0] !== 0 && direction[1] !== 0;
-      if (isCorner && resizeStartElement.current) {
-        const newFontSize = calculateNewFontSize(resizeStartElement.current, newWidth);
-        target.style.width = `${newWidth}px`;
-        const textContainer = target.querySelector('span, textarea') as HTMLElement;
-        if (textContainer) textContainer.style.fontSize = `${newFontSize}px`;
-        target.style.transform = `translate(${drag.beforeTranslate[0]}px, ${drag.beforeTranslate[1]}px)`;
-        engine.updateElement(id, {
-          x: element.x + drag.beforeTranslate[0],
-          y: element.y + drag.beforeTranslate[1],
-          width: newWidth,
-          style: { ...element.style, fontSize: newFontSize }
-        });
-      } else {
-        target.style.width = `${newWidth}px`;
-        engine.updateElement(id, { x: element.x, y: element.y, width: newWidth, fixedWidth: true });
-      }
-    } else {
-      target.style.width = `${newWidth}px`;
-      target.style.height = `${newHeight}px`;
-      target.style.transform = `translate(${drag.beforeTranslate[0]}px, ${drag.beforeTranslate[1]}px)`;
-      engine.updateElement(id, {
-        x: element.x + drag.beforeTranslate[0],
-        y: element.y + drag.beforeTranslate[1],
-        width: newWidth,
-        height: newHeight,
-      });
-    }
+
+    // 更新 DOM 样式以保证即时反馈 (乐观 UI)
+    target.style.width = `${newWidth}px`;
+    target.style.height = `${newHeight}px`;
+    target.style.transform = `translate(${drag.beforeTranslate[0]}px, ${drag.beforeTranslate[1]}px)`;
+
+    engine.handleResize(
+      id, 
+      { 
+        x: (elements.find(el => el.id === id)?.x || 0) + drag.beforeTranslate[0], 
+        y: (elements.find(el => el.id === id)?.y || 0) + drag.beforeTranslate[1], 
+        width: newWidth, 
+        height: newHeight 
+      }, 
+      isCorner, 
+      resizeStartElement.current || undefined
+    );
   };
 
   const handleResizeEnd = ({ target }: { target: HTMLElement | SVGElement }) => {
@@ -234,19 +170,12 @@ export const EngineMoveableManager = memo(function EngineMoveableManager({ zoom,
   };
 
   const handleDragGroup = ({ events }: OnDragGroup) => {
-    const latestElements = engine.getState().elements;
-    events.forEach(({ target, delta }) => {
-      const id = target.getAttribute('data-element-id');
-      if (id) {
-        const element = latestElements.find(el => el.id === id);
-        if (element) {
-          const isParentAlsoSelected = element.parentId && selectedIds.includes(element.parentId);
-          if (!isParentAlsoSelected) {
-            engine.updateElement(id, { x: element.x + delta[0], y: element.y + delta[1] });
-          }
-        }
-      }
-    });
+    // 组拖拽逻辑也通过 handleDrag
+    // 这里简单处理：取第一个事件的 delta，因为 Moveable 同步所有元素的 delta
+    if (events.length === 0) return;
+    const { delta } = events[0];
+    const ids = events.map(e => e.target.getAttribute('data-element-id')).filter(Boolean) as string[];
+    engine.handleDrag(ids, [delta[0], delta[1]]);
   };
 
   const handleResizeGroup = ({ events }: OnResizeGroup) => {

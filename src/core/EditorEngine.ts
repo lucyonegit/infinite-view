@@ -8,6 +8,7 @@ import type {
   Bounds
 } from '../types/editor';
 import { EDITOR_CONFIG } from '../constants/editor';
+import { calculateNewFontSize } from '../components/elements/utils/textUtils';
 
 export interface EditorState {
   viewport: Viewport;
@@ -196,6 +197,130 @@ export class EditorEngine {
   public resizeElement(id: string, bounds: Bounds) {
     this.setState({
       elements: this.state.elements.map(el => el.id === id ? { ...el, ...bounds } : el),
+    });
+  }
+
+  // --- 高级交互方法 (Encapsulated Interaction Logic) ---
+
+  /**
+   * 处理拖拽交互
+   * @param ids 正在拖拽的元素 ID 列表
+   * @param delta 偏移量 [dx, dy]
+   * @param mouseWorld 鼠标当前的世界坐标 (用于检测 Frame 进入)
+   */
+  public handleDrag(ids: string[], delta: [number, number], mouseWorld?: Point) {
+    if (ids.length === 0) return;
+
+    this.setState((state) => {
+      const nextElements = [...state.elements];
+
+      // 1. 移动所有选中的元素
+      ids.forEach(id => {
+        const idx = nextElements.findIndex(el => el.id === id);
+        if (idx === -1) return;
+
+        const el = nextElements[idx];
+        // 如果父元素也被选中，不在此处重复移动位移（Moveable 会处理组位移或由组件逻辑决定）
+        // 这里的逻辑对应于原来的 EngineMoveableManager.tsx handleDrag
+        const isParentAlsoSelected = el.parentId && ids.includes(el.parentId);
+        if (!isParentAlsoSelected) {
+          nextElements[idx] = {
+            ...el,
+            x: el.x + delta[0],
+            y: el.y + delta[1]
+          };
+        }
+      });
+
+      // 2. 如果是单个元素拖拽且提供了鼠标位置，处理 Frame 嵌套逻辑
+      let nextHoverFrameId = state.hoverFrameId;
+      if (ids.length === 1 && mouseWorld) {
+        const id = ids[0];
+        const el = nextElements.find(e => e.id === id);
+
+        if (el && el.type !== 'frame') {
+          if (el.parentId) {
+            // 已经在 Frame 内，检查是否移出
+            const parentFrame = nextElements.find(p => p.id === el.parentId);
+            if (parentFrame) {
+              const elementRight = el.x + el.width;
+              const elementBottom = el.y + el.height;
+              if (elementRight <= 0 || el.x >= parentFrame.width || elementBottom <= 0 || el.y >= parentFrame.height) {
+                // 移出逻辑已由 removeFromFrame 处理，但在 setState 内部我们需要合并逻辑
+                // 这里手动复制一部分 removeFromFrame 的逻辑以保证原子性
+                const worldPos = this.getElementWorldPos(id); // 注意：这里使用了旧 state 计算
+                const idx = nextElements.findIndex(e => e.id === id);
+                nextElements[idx] = { ...nextElements[idx], parentId: undefined, x: worldPos.x, y: worldPos.y };
+
+                const pIdx = nextElements.findIndex(e => e.id === parentFrame.id);
+                nextElements[pIdx] = {
+                  ...nextElements[pIdx],
+                  children: (nextElements[pIdx].children || []).filter(cid => cid !== id)
+                };
+              }
+            }
+          } else {
+            // 在根节点，检查是否进入 Frame
+            const targetFrame = this.findFrameAtPoint(mouseWorld.x, mouseWorld.y, ids);
+            if (targetFrame) {
+              if (nextHoverFrameId !== targetFrame.id) {
+                nextHoverFrameId = targetFrame.id;
+
+                // 执行 addToFrame 逻辑的内联版本
+                const worldPos = { x: el.x, y: el.y }; // 本身就是根节点，x/y 即 worldPos
+                const frameWorldPos = this.getElementWorldPos(targetFrame.id);
+
+                const relativeX = worldPos.x - frameWorldPos.x;
+                const relativeY = worldPos.y - frameWorldPos.y;
+
+                const idx = nextElements.findIndex(e => e.id === id);
+                nextElements[idx] = { ...el, parentId: targetFrame.id, x: relativeX, y: relativeY };
+
+                const fIdx = nextElements.findIndex(e => e.id === targetFrame.id);
+                const children = nextElements[fIdx].children || [];
+                if (!children.includes(id)) {
+                  nextElements[fIdx] = { ...nextElements[fIdx], children: [...children, id] };
+                }
+              }
+            } else {
+              nextHoverFrameId = null;
+            }
+          }
+        }
+      }
+
+      return {
+        elements: nextElements,
+        hoverFrameId: nextHoverFrameId
+      };
+    });
+  }
+
+  /**
+   * 处理缩放交互
+   * @param id 元素 ID
+   * @param bounds 新的几何属性
+   * @param isCorner 是否是角点缩放 (决定 Text 元素是否缩放字体)
+   * @param originalElement 缩放开始时的原始元素状态 (用于 textUtils 计算)
+   */
+  public handleResize(id: string, bounds: Partial<Bounds>, isCorner: boolean, originalElement?: Element) {
+    this.setState(state => {
+      const idx = state.elements.findIndex(el => el.id === id);
+      if (idx === -1) return {};
+
+      const el = state.elements[idx];
+      const updates: Partial<Element> = { ...bounds };
+
+      // 文字特殊处理：角点缩放调整字号
+      if (el.type === 'text' && isCorner && originalElement && bounds.width) {
+        const newFontSize = calculateNewFontSize(originalElement, bounds.width);
+        updates.style = { ...el.style, fontSize: newFontSize };
+      }
+
+      const nextElements = [...state.elements];
+      nextElements[idx] = { ...el, ...updates };
+
+      return { elements: nextElements };
     });
   }
 
