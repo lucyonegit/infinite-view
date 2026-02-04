@@ -222,8 +222,9 @@ async function renderElementToCanvas(
 }
 
 /**
-     * 绘制圆角矩形路径
-     */
+ * 绘制圆角矩形路径
+ * 实现 CSS 标准的圆角：半径不能超过宽/高的一半
+ */
 function roundRect(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -232,16 +233,34 @@ function roundRect(
   height: number,
   radius: number
 ): void {
+  // 1. 确保半径不为负数
+  let r = Math.max(0, radius);
+
+  // 2. 限制半径：半径不能超过宽或高的一半 (CSS 标准)
+  // 如果半径过大，绘制出的路径会发生重叠导致诡异边缘
+  const maxRadius = Math.min(width, height) / 2;
+  if (r > maxRadius) {
+    r = maxRadius;
+  }
+
+  // 3. 优先尝试使用原生方法 (现代浏览器支持)
+  if (typeof ctx.roundRect === 'function') {
+    ctx.beginPath();
+    ctx.roundRect(x, y, width, height, r);
+    return;
+  }
+
+  // 4. 手动实现 (兼容旧环境)
   ctx.beginPath();
-  ctx.moveTo(x + radius, y);
-  ctx.lineTo(x + width - radius, y);
-  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
-  ctx.lineTo(x + width, y + height - radius);
-  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
-  ctx.lineTo(x + radius, y + height);
-  ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
-  ctx.lineTo(x, y + radius);
-  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + width - r, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+  ctx.lineTo(x + width, y + height - r);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+  ctx.lineTo(x + r, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
   ctx.closePath();
 }
 
