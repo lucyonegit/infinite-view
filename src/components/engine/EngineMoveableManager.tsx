@@ -3,7 +3,7 @@ import Moveable, { type OnDrag, type OnResize, type OnDragGroup, type OnResizeGr
 import { useEngineInstance } from '../../core/react/EditorProvider';
 import { useEditorEngine } from '../../core/react/useEditorEngine';
 import { useCoordinateSystem } from '../../hooks/useCoordinateSystem';
-import type { Element } from '../../types/editor';
+import type { Element } from '../../core/types';
 
 interface MoveableManagerProps {
   zoom: number;

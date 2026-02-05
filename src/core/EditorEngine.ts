@@ -6,7 +6,7 @@ import type {
   Point,
   ElementType,
   Bounds
-} from '../types/editor';
+} from './types';
 import { EDITOR_CONFIG } from '../constants/editor';
 import { calculateNewFontSize } from '../components/elements/utils/textUtils';
 

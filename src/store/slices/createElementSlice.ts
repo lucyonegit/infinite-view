@@ -1,5 +1,5 @@
 import type { StateCreator } from 'zustand';
-import type { Element, Bounds } from '../../types/editor';
+import type { Element, Bounds } from '../../core/types';
 import { EDITOR_CONFIG } from '../../constants/editor';
 
 // ============ 辅助函数 ============

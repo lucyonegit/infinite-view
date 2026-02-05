@@ -3,7 +3,7 @@ import type {
   Viewport,
   InteractionState,
   EditorDataExport,
-} from '../types/editor';
+} from '../core/types';
 
 import { createViewportSlice, type ViewportSlice } from './slices/createViewportSlice';
 import { createElementSlice, type ElementSlice } from './slices/createElementSlice';

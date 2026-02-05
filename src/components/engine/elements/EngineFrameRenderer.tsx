@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import type { Element } from '../../../types/editor';
+import type { Element } from '../../../core/types';
 import { useEngineInstance } from '../../../core/react/EditorProvider';
 import { useEditorEngine, useEditorEngineShallow } from '../../../core/react/useEditorEngine';
 import { EngineElementRenderer } from './EngineElementRenderer';

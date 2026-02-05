@@ -1,5 +1,5 @@
 import type { StateCreator } from 'zustand';
-import type { InteractionState, ToolType, ElementType, Point, Element } from '../../types/editor';
+import type { InteractionState, ToolType, ElementType, Point, Element } from '../../core/types';
 
 // ============ 初始状态 ============
 

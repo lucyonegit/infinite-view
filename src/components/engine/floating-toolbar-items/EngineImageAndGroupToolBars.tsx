@@ -2,7 +2,7 @@ import React from 'react';
 import { Button, Space, Divider, Tooltip, ColorPicker } from 'antd';
 import { DownloadOutlined, BgColorsOutlined } from '@ant-design/icons';
 import { useEngineInstance } from '../../../core/react/EditorProvider';
-import type { Element } from '../../../types/editor';
+import type { Element } from '../../../core/types';
 
 interface ImageToolBarProps {
   element: Element;

@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Element } from '../../../types/editor';
+import type { Element } from '../../../core/types';
 
 /**
  * 获取文本元素的通用样式 (用于渲染和镜像计算)

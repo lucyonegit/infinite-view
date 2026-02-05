@@ -21,7 +21,7 @@ import {
 } from '@ant-design/icons';
 import { useEngineInstance } from '../../../core/react/EditorProvider';
 import { useEditorEngine } from '../../../core/react/useEditorEngine';
-import type { Element } from '../../../types/editor';
+import type { Element } from '../../../core/types';
 
 interface TextToolBarProps {
   element: Element;

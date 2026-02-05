@@ -1,6 +1,6 @@
 import { useEngineInstance } from '../../core/react/EditorProvider';
 import { useEditorEngine } from '../../core/react/useEditorEngine';
-import type { ToolType } from '../../types/editor';
+import type { ToolType } from '../../core/types';
 import './EngineToolbar.css';
 
 interface ToolConfig {

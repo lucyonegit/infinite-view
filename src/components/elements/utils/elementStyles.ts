@@ -1,4 +1,4 @@
-import type { Element } from '../../../types/editor';
+import type { Element } from '../../../core/types';
 
 /**
  * 获取元素的 CSS 样式

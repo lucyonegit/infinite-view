@@ -2,7 +2,7 @@ import React from 'react';
 import { ColorPicker, Button, Divider, Space, Tooltip, Dropdown } from 'antd';
 import { DownloadOutlined, MoreOutlined, BgColorsOutlined } from '@ant-design/icons';
 import { useEngineInstance } from '../../../core/react/EditorProvider';
-import type { Element } from '../../../types/editor';
+import type { Element } from '../../../core/types';
 
 interface ShapeToolBarProps {
   element: Element;

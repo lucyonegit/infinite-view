@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import type { Element } from '../../types/editor';
+import type { Element } from '../../core/types';
 import { useEditorStore } from '../../store/editorStore';
 import { ElementRenderer } from './ElementRenderer';
 import { getElementStyles } from './utils/elementStyles';

@@ -76,6 +76,8 @@ export interface Element {
   locked?: boolean;      // 是否锁定
   visible?: boolean;     // 是否可见
   fixedWidth?: boolean;  // 是否固定宽度 (针对文本元素)
+  /** 业务层自定义状态 */
+  customState?: Record<string, unknown>;
 }
 
 // ============ 交互状态 ============

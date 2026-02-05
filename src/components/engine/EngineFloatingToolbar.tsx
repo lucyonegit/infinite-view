@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import type { Element } from '../../types/editor';
+import type { Element } from '../../core/types';
 import { EngineLayout } from './floating-toolbar-items/EngineLayout';
 import { EngineFloatingToolbarManager } from './floating-toolbar-items/EngineFloatingToolbarManager';
 

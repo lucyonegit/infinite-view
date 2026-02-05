@@ -1,5 +1,5 @@
 import React from 'react';
-import type { Element } from '../../types/editor';
+import type { Element } from '../../core/types';
 import { TextToolBar } from './TextToolBar';
 import { ShapeToolBar } from './ShapeToolBar';
 import { ImageToolBar } from './ImageToolBar';

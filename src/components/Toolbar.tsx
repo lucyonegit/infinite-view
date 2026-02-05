@@ -1,5 +1,5 @@
 import { useEditorStore } from '../store/editorStore';
-import type { ToolType } from '../types/editor';
+import type { ToolType } from '../core/types';
 import './Toolbar.css';
 
 interface ToolConfig {

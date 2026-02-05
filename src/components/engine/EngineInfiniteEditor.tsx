@@ -9,7 +9,7 @@ import { EngineFloatingToolbar } from './EngineFloatingToolbar';
 import { EngineElementRenderer } from './elements/EngineElementRenderer';
 import { exportSelectedFrameAsImage } from '../../utils/exportUtils';
 import { useCoordinateSystem } from '../../hooks/useCoordinateSystem';
-import type { Point, Bounds, Element, Viewport } from '../../types/editor';
+import type { Point, Bounds, Element, Viewport } from '../../core/types';
 import './EngineInfiniteEditor.css';
 
 /**

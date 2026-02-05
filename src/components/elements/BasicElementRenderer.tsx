@@ -1,5 +1,5 @@
 import React, { memo, useCallback } from 'react';
-import type { Element } from '../../types/editor';
+import type { Element } from '../../core/types';
 import { useEditorStore } from '../../store/editorStore';
 import { getElementStyles } from './utils/elementStyles';
 import { TextElementRenderer } from './TextElementRenderer';

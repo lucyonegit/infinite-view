@@ -2,7 +2,7 @@ import { useRef, useEffect, useMemo, useCallback, memo, useState, useLayoutEffec
 import Moveable, { type OnDrag, type OnResize, type OnDragGroup, type OnResizeGroup } from 'react-moveable';
 import { useEditorStore } from '../store/editorStore';
 import { useCoordinateSystem } from '../hooks/useCoordinateSystem';
-import type { Element } from '../types/editor';
+import type { Element } from '../core/types';
 import { calculateNewFontSize } from './elements/utils/textUtils';
 
 interface MoveableManagerProps {

@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import type { Element } from '../../types/editor';
+import type { Element } from '../../core/types';
 
 interface ImageElementRendererProps {
   element: Element;

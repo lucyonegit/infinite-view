@@ -2,7 +2,7 @@
  * 几何计算和坐标变换工具
  */
 
-import type { Point, Bounds, Viewport } from '../types/editor';
+import type { Point, Bounds, Viewport } from '../core/types';
 
 // ============ 坐标变换 ============
 
