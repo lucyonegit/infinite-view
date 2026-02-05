@@ -36,3 +36,7 @@ export type {
   SelectEvent,
   SelectEndEvent,
 } from './SelectoManager';
+
+// Hooks
+export { useSelectionBoundingBox } from '../hooks/useSelectionBoundingBox';
+export type { SelectionBoundingBox } from '../hooks/useSelectionBoundingBox';

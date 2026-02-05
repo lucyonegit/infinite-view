@@ -1,10 +1,10 @@
 import { useRef, useCallback, useState, useEffect } from 'react';
 import InfiniteViewer from 'react-infinite-viewer';
 import { useEngineInstance } from '../../core/react/EditorProvider';
-import { useEditorEngine, useEditorEngineShallow } from '../../core/react/useEditorEngine';
+import { useEditorEngine } from '../../core/react/useEditorEngine';
 import { EngineToolbar } from './EngineToolbar';
 import { EngineFloatingToolbar } from './EngineFloatingToolbar';
-import { BaseRender, MoveableManager, SelectoManager } from '../../core/react/components';
+import { BaseRender, MoveableManager, SelectoManager, useSelectionBoundingBox } from '../../core/react/components';
 import { exportSelectedFrameAsImage } from '../../utils/exportUtils';
 import { useCoordinateSystem } from '../../core/react/hooks/useCoordinateSystem';
 import type { Point, Bounds, Element, Viewport } from '../../core/types';
@@ -43,24 +43,8 @@ export function EngineInfiniteEditor() {
   }, []);
 
 
-  // 3. 选区包围盒计算 (使用浅比较，因为返回的是新对象)
-  const selectionBoundingBox = useEditorEngineShallow(engine, s => {
-    const { selectedIds, elements } = s;
-    if (selectedIds.length === 0) return null;
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    selectedIds.forEach(id => {
-      const el = elements.find(e => e.id === id);
-      if (el) {
-        const worldPos = engine.getElementWorldPos(id);
-        minX = Math.min(minX, worldPos.x);
-        minY = Math.min(minY, worldPos.y);
-        maxX = Math.max(maxX, worldPos.x + el.width);
-        maxY = Math.max(maxY, worldPos.y + el.height);
-      }
-    });
-    if (minX === Infinity) return null;
-    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY, centerX: minX + (maxX - minX) / 2 };
-  });
+  // 3. 选区包围盒计算 (使用核心层 hook)
+  const selectionBoundingBox = useSelectionBoundingBox();
 
   // 4. 形状创建手势
   useEffect(() => {
