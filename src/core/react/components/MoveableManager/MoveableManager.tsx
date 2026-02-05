@@ -302,7 +302,7 @@ export const MoveableManager = forwardRef<MoveableManagerRef, MoveableManagerPro
           if (clickedElement) {
             const clickedId = clickedElement.getAttribute('data-element-id');
             if (clickedId && !selectedIds.includes(clickedId)) {
-              engine.selectElements([clickedId], mouseEvent.shiftKey);
+              engine.selectElements([clickedId], mouseEvent.shiftKey, mouseEvent);
               return false;
             }
           }
