@@ -83,6 +83,10 @@ export const BaseRender = memo(function BaseRender({
         <TextElement
           element={element}
           editorState={editorState}
+          isEditing={editorState.interaction.editingId === element.id}
+          onUpdate={(id, updates) => engine.updateElement(id, updates)}
+          onStartEditing={(id) => engine.setEditingId(id)}
+          onEndEditing={() => engine.setEditingId(null)}
           className={className}
           style={style}
         />

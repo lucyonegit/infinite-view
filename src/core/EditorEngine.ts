@@ -309,12 +309,26 @@ export class EditorEngine {
       if (idx === -1) return {};
 
       const el = state.elements[idx];
-      const updates: Partial<Element> = { ...bounds };
+      const updates: Partial<Element> = {};
 
-      // 文字特殊处理：角点缩放调整字号
-      if (el.type === 'text' && isCorner && originalElement && bounds.width) {
-        const newFontSize = calculateNewFontSize(originalElement, bounds.width);
-        updates.style = { ...el.style, fontSize: newFontSize };
+      // 文字特殊处理
+      if (el.type === 'text') {
+        if (isCorner && originalElement && bounds.width) {
+          // 角点缩放：等比缩放字体，更新位置和宽度
+          const newFontSize = calculateNewFontSize(originalElement, bounds.width);
+          updates.x = bounds.x;
+          updates.y = bounds.y;
+          updates.width = bounds.width;
+          updates.style = { ...el.style, fontSize: newFontSize };
+        } else {
+          // 侧边缩放：仅更新宽度，设置固定宽度模式（高度会由 ResizeObserver 自动调整）
+          updates.width = bounds.width;
+          updates.fixedWidth = true;
+          // 侧边缩放不更新位置（保持原位）
+        }
+      } else {
+        // 普通元素：同步更新所有属性
+        Object.assign(updates, bounds);
       }
 
       const nextElements = [...state.elements];

@@ -5,6 +5,7 @@ import { useEditorEngine } from '../../useEditorEngine';
 import { useCoordinateSystem } from '../../hooks/useCoordinateSystem';
 import type { Element } from '../../../types';
 import type { MoveableManagerProps, MoveableManagerRef } from './types';
+import { calculateNewFontSize } from '../../../../components/elements/utils/textUtils';
 
 /**
  * MoveableManager - 核心拖拽/缩放管理器
@@ -152,54 +153,99 @@ export const MoveableManager = forwardRef<MoveableManagerRef, MoveableManagerPro
       const element = elements.find(el => el.id === id);
       if (!element) return;
       
-      const isCorner = direction[0] !== 0 && direction[1] !== 0;
+      // 使用 CSS transform 直接操作 DOM，避免 React 重新渲染
       const newWidth = Math.floor(width);
       const newHeight = Math.floor(height);
-
-      target.style.width = `${newWidth}px`;
-      target.style.height = `${newHeight}px`;
-      target.style.transform = `translate(${drag.beforeTranslate[0]}px, ${drag.beforeTranslate[1]}px)`;
+      
+      // 如果是文本元素，特殊处理
+      if (element.type === 'text') {
+        const isCorner = direction[0] !== 0 && direction[1] !== 0;
+        
+        if (isCorner && resizeStartElement.current) {
+          // 等比缩放：根据【初始宽度】的变化比例计算新字号
+          const newFontSize = calculateNewFontSize(resizeStartElement.current, newWidth);
+          
+          target.style.width = `${newWidth}px`;
+          // 同步更新 DOM 的字号以保证平滑
+          const textContainer = target.querySelector('span, textarea') as HTMLElement;
+          if (textContainer) {
+            textContainer.style.fontSize = `${newFontSize}px`;
+          }
+          
+          target.style.transform = `translate(${drag.beforeTranslate[0]}px, ${drag.beforeTranslate[1]}px)`;
+          
+          engine.updateElement(id, {
+            x: element.x + drag.beforeTranslate[0],
+            y: element.y + drag.beforeTranslate[1],
+            width: newWidth,
+            style: { ...element.style, fontSize: newFontSize }
+          });
+        } else {
+          // 侧边缩放：仅改变宽度，允许换行（高度将由 ResizeObserver 自动更新）
+          // 标记为已设置固定宽度
+          target.style.width = `${newWidth}px`;
+          // target.style.transform = `translate(${drag.beforeTranslate[0]}px, ${drag.beforeTranslate[1]}px)`;
+          
+          engine.updateElement(id, {
+            x: element.x,
+            y: element.y,
+            width: newWidth,
+            fixedWidth: true, // 一旦手动调整宽度，就进入固定宽度模式
+          });
+        }
+      } else {
+        // 普通元素：同步更新宽高
+        target.style.width = `${newWidth}px`;
+        target.style.height = `${newHeight}px`;
+        target.style.transform = `translate(${drag.beforeTranslate[0]}px, ${drag.beforeTranslate[1]}px)`;
+        
+        engine.updateElement(id, {
+          x: element.x + drag.beforeTranslate[0],
+          y: element.y + drag.beforeTranslate[1],
+          width: newWidth,
+          height: newHeight,
+        });
+      }
 
       // 调用业务回调
+      const isCorner = direction[0] !== 0 && direction[1] !== 0;
       onResize?.({ elementId: id, element, width: newWidth, height: newHeight, direction: direction as [number, number], isCorner });
-
-      engine.handleResize(
-        id, 
-        { 
-          x: element.x + drag.beforeTranslate[0], 
-          y: element.y + drag.beforeTranslate[1], 
-          width: newWidth, 
-          height: newHeight 
-        }, 
-        isCorner, 
-        resizeStartElement.current || undefined
-      );
     }, [elements, onResize, engine]);
 
     const handleResizeEnd = useCallback(({ target }: { target: HTMLElement | SVGElement }) => {
-      setKeepRatio(false);
+      setKeepRatio(false); // 重置 keepRatio 状态
       engine.setInteraction({ isResizing: false });
-      
+      resizeStartElement.current = null; // 清除开始状态
+
       const id = target.getAttribute('data-element-id');
       if (id) {
         const element = elements.find(el => el.id === id);
         if (element) {
           onResizeEnd?.({ elementId: id, element });
           
+          // 获取最终的 transform 值
           const computedStyle = window.getComputedStyle(target);
           const matrix = new DOMMatrix(computedStyle.transform);
+          
           const finalWidth = Math.floor(parseInt(target.style.width));
+          // 对于文本元素，我们通常让 ResizeObserver 处理高度
+          // 但为了保持同步，我们提交当前宽度，高度则视情况而定
           const updates: Partial<Element> = {
             x: element.x + matrix.m41,
             y: element.y + matrix.m42,
             width: finalWidth,
           };
-          if (element.type !== 'text') updates.height = Math.floor(parseInt(target.style.height));
+
+          if (element.type !== 'text') {
+             updates.height = Math.floor(parseInt(target.style.height));
+          }
+
           engine.updateElement(id, updates);
+
+          // 清除 transform（位置已提交到 store）
           target.style.transform = '';
         }
       }
-      resizeStartElement.current = null;
     }, [elements, onResizeEnd, engine]);
 
     const handleDragGroup = useCallback(({ events }: OnDragGroup) => {
