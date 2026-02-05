@@ -76,9 +76,9 @@ export const MoveableManager = forwardRef<MoveableManagerRef, MoveableManagerPro
         .map(id => document.querySelector(`[data-element-id="${id}"]`) as HTMLElement)
         .filter(Boolean);
       
-      requestAnimationFrame(() => {
+      // requestAnimationFrame(() => {
         setTargets(nextTargets);
-      });
+      // });
 
       // 检查 Selecto 传递的立即拖拽事件
       const selectionEvent = engine.consumeSelectionEvent();
