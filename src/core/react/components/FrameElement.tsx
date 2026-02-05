@@ -65,7 +65,7 @@ export const FrameElement = memo(function FrameElement({
     left: 0,
     width: '100%',
     height: '100%',
-    backgroundColor: element.style?.backgroundColor || '#ffffff',
+    backgroundColor: element.style?.fill || element.style?.backgroundColor || '#ffffff',
     borderRadius: element.style?.borderRadius,
     border: element.style?.stroke 
       ? `${element.style.strokeWidth || 1}px solid ${element.style.stroke}` 
