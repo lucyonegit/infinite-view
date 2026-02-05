@@ -46,7 +46,7 @@ export const ImageElement = memo(function ImageElement({
   }), [element, style]);
 
   const mergedClassName = useMemo(() => {
-    const classes = ['image-element'];
+    const classes = ['infinite_view_element', 'image-element'];
     if (isSelected) classes.push('selected');
     if (className) classes.push(className);
     return classes.join(' ');
@@ -58,10 +58,11 @@ export const ImageElement = memo(function ImageElement({
       style={containerStyle}
       data-element-id={element.id}
     >
-      {element.imageUrl && (
+      {element.imageUrl ? (
         <img
           src={element.imageUrl}
           alt=""
+          draggable={false}
           style={{
             width: '100%',
             height: '100%',
@@ -69,6 +70,10 @@ export const ImageElement = memo(function ImageElement({
             pointerEvents: 'none',
           }}
         />
+      ) : (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#999' }}>
+          📷 Image
+        </div>
       )}
       {children}
     </div>

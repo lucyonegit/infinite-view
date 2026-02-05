@@ -52,7 +52,7 @@ export const TextElement = memo(function TextElement({
   }), [element, style]);
 
   const mergedClassName = useMemo(() => {
-    const classes = ['text-element'];
+    const classes = ['infinite_view_element', 'text-element'];
     if (isSelected) classes.push('selected');
     if (className) classes.push(className);
     return classes.join(' ');

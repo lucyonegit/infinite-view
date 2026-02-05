@@ -252,7 +252,7 @@ export const MoveableManager = forwardRef<MoveableManagerRef, MoveableManagerPro
           const actualTarget = document.elementFromPoint(mouseEvent.clientX, mouseEvent.clientY) as HTMLElement;
           moveableAreas.forEach(area => { (area as HTMLElement).style.pointerEvents = ''; });
           
-          const clickedElement = actualTarget?.closest('.element');
+          const clickedElement = actualTarget?.closest('.infinite_view_element');
           if (clickedElement) {
             const clickedId = clickedElement.getAttribute('data-element-id');
             if (clickedId && !selectedIds.includes(clickedId)) {

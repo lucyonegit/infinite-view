@@ -24,7 +24,7 @@ export const SelectoManager = forwardRef<SelectoManagerRef, SelectoManagerProps>
     // 默认配置
     const {
       dragContainer = document.body,
-      selectableTargets = ['.element'],
+      selectableTargets = ['.infinite_view_element'],
       selectByClick = true,
       selectFromInside = false,
     } = options;
@@ -61,7 +61,7 @@ export const SelectoManager = forwardRef<SelectoManagerRef, SelectoManagerProps>
         return;
       }
 
-      const element = target.closest('.element');
+      const element = target.closest('.infinite_view_element');
       const elementId = element?.getAttribute('data-element-id');
       isDragStartOnElement.current = !!elementId;
 

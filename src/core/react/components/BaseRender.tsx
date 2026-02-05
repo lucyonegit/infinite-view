@@ -103,6 +103,7 @@ export const BaseRender = memo(function BaseRender({
           editorState={editorState}
           className={className}
           style={style}
+          customRender={customRender}
         />
       );
     default:

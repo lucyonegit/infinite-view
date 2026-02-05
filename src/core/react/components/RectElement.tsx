@@ -49,7 +49,7 @@ export const RectElement = memo(function RectElement({
   }), [element, style]);
 
   const mergedClassName = useMemo(() => {
-    const classes = ['rect-element'];
+    const classes = ['infinite_view_element', 'rect-element'];
     if (isSelected) classes.push('selected');
     if (className) classes.push(className);
     return classes.join(' ');
