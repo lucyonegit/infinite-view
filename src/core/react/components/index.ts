@@ -13,3 +13,26 @@ export { RectElement } from './RectElement';
 export { TextElement } from './TextElement';
 export { ImageElement } from './ImageElement';
 export { FrameElement } from './FrameElement';
+
+// 交互管理器
+export { MoveableManager } from './MoveableManager';
+export type {
+  MoveableManagerProps,
+  MoveableManagerRef,
+  MoveableOptions,
+  DragEvent,
+  DragStartEvent,
+  DragEndEvent,
+  ResizeEvent,
+  ResizeStartEvent,
+  ResizeEndEvent,
+} from './MoveableManager';
+
+export { SelectoManager } from './SelectoManager';
+export type {
+  SelectoManagerProps,
+  SelectoManagerRef,
+  SelectoOptions,
+  SelectEvent,
+  SelectEndEvent,
+} from './SelectoManager';

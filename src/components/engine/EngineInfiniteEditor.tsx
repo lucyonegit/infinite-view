@@ -3,12 +3,10 @@ import InfiniteViewer from 'react-infinite-viewer';
 import { useEngineInstance } from '../../core/react/EditorProvider';
 import { useEditorEngine, useEditorEngineShallow } from '../../core/react/useEditorEngine';
 import { EngineToolbar } from './EngineToolbar';
-import { EngineMoveableManager } from './EngineMoveableManager';
-import { EngineSelectoManager } from './EngineSelectoManager';
 import { EngineFloatingToolbar } from './EngineFloatingToolbar';
-import { BaseRender } from '../../core/react/components';
+import { BaseRender, MoveableManager, SelectoManager } from '../../core/react/components';
 import { exportSelectedFrameAsImage } from '../../utils/exportUtils';
-import { useCoordinateSystem } from '../../hooks/useCoordinateSystem';
+import { useCoordinateSystem } from '../../core/react/hooks/useCoordinateSystem';
 import type { Point, Bounds, Element, Viewport } from '../../core/types';
 import './EngineInfiniteEditor.css';
 
@@ -209,11 +207,7 @@ export function EngineInfiniteEditor() {
           )}
 
           {activeTool === 'select' && (
-            <EngineMoveableManager 
-              zoom={zoom} 
-              elements={elements} 
-              selectedIds={selectedIds} 
-            />
+            <MoveableManager zoom={zoom} />
           )}
         </div>
       </InfiniteViewer>
@@ -226,7 +220,7 @@ export function EngineInfiniteEditor() {
         viewport={interaction.isPanning ? interaction.startPoint ? { x: -interaction.startPoint.x, y: -interaction.startPoint.y } : viewport : viewport} // 简化逻辑
       />
 
-      {activeTool === 'select' && <EngineSelectoManager />}
+      {activeTool === 'select' && <SelectoManager />}
 
       <div className="editor-statusbar">
         <span className="status-item"><span className="status-label">Zoom:</span>{Math.round(zoom * 100)}%</span>
