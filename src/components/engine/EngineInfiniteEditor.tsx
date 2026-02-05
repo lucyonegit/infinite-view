@@ -6,7 +6,7 @@ import { EngineToolbar } from './EngineToolbar';
 import { EngineMoveableManager } from './EngineMoveableManager';
 import { EngineSelectoManager } from './EngineSelectoManager';
 import { EngineFloatingToolbar } from './EngineFloatingToolbar';
-import { EngineElementRenderer } from './elements/EngineElementRenderer';
+import { BaseRender } from '../../core/react/components';
 import { exportSelectedFrameAsImage } from '../../utils/exportUtils';
 import { useCoordinateSystem } from '../../hooks/useCoordinateSystem';
 import type { Point, Bounds, Element, Viewport } from '../../core/types';
@@ -201,7 +201,7 @@ export function EngineInfiniteEditor() {
           <div className="grid-background" />
           <div className="elements-layer">
             {elements.filter(el => !el.parentId).map((element) => (
-              <EngineElementRenderer key={element.id} element={element} isSelected={selectedIds.includes(element.id)} zoom={zoom} />
+              <BaseRender key={element.id} element={element} />
             ))}
           </div>
           {creatingPreview && (
