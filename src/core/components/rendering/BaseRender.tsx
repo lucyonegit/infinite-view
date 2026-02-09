@@ -11,7 +11,7 @@ import { FrameElement } from './elements/FrameElement';
 /**
  * 自定义渲染函数类型
  * @param element - 当前元素数据
- * @param editorState - 编辑器状态（已订阅，状态变更时会触发重渲染）
+ * @param editorState - 编辑器状态
  */
 export type CustomRenderFn = (element: Element, editorState: EditorState) => React.ReactNode;
 
@@ -43,10 +43,10 @@ export interface BaseRenderProps {
 /**
  * BaseRender - 统一元素渲染入口
  * 
- * 基础用法：自动根据元素类型渲染对应组件
- * 高级用法：通过 customRender 配置自定义渲染逻辑
- * 
- * customRender 函数会自动订阅 EditorState 变更，状态变化时触发重渲染
+ * 优化策略：
+ * 1. 使用 memo 避免父组件重渲染导致的无谓更新。
+ * 2. 移除对整个 editorState 的订阅，改用粒度更细的订阅。
+ * 3. 仅在选中状态或编辑状态变化时触发强制更新。
  */
 export const BaseRender = memo(function BaseRender({
   element,
@@ -56,20 +56,24 @@ export const BaseRender = memo(function BaseRender({
 }: BaseRenderProps) {
   const engine = useEngineInstance();
   
-  // 订阅整个 EditorState，确保 customRender 可以响应任何状态变化
-  const editorState = useEditorEngine(engine, (state) => state);
-
-  // 获取对应元素类型的自定义渲染函数
-  const customRenderer = customRender?.[element.type];
-  const customChildren = customRenderer ? customRenderer(element, editorState) : null;
+  // 仅在必要时订阅局部状态（例如选中状态、编辑状态）
+  // 这样当其他元素移动时，这个组件不会因为全局 state 变化而重渲染
+  const isSelected = useEditorEngine(engine, (state) => state.selectedIds.includes(element.id));
+  const isEditing = useEditorEngine(engine, (state) => state.interaction.editingId === element.id);
   
-  // 默认渲染：根据元素类型选择对应组件，并将 customRenderer 的结果作为 children 传入
+  // 如果有自定义渲染，我们才去获取全量状态（或者根据需要进一步优化）
+  // 注意：这里我们拿到的 editorState 是一个快照，不会触发重渲染
+  // 如果 customRender 需要实时状态，它应该自己内部使用 useEditorEngine
+  const customRenderer = customRender?.[element.type];
+  const customChildren = customRenderer ? customRenderer(element, engine.getState()) : null;
+  
+  // 默认渲染：根据元素类型选择对应组件
   switch (element.type) {
     case 'rectangle':
       return (
         <RectElement
           element={element}
-          editorState={editorState}
+          isSelected={isSelected}
           className={className}
           style={style}
         >
@@ -80,8 +84,8 @@ export const BaseRender = memo(function BaseRender({
       return (
         <TextElement
           element={element}
-          editorState={editorState}
-          isEditing={editorState.interaction.editingId === element.id}
+          isSelected={isSelected}
+          isEditing={isEditing}
           onUpdate={(id, updates) => engine.updateElement(id, updates)}
           onStartEditing={(id) => engine.setEditingId(id)}
           onEndEditing={() => engine.setEditingId(null)}
@@ -95,7 +99,7 @@ export const BaseRender = memo(function BaseRender({
       return (
         <ImageElement
           element={element}
-          editorState={editorState}
+          isSelected={isSelected}
           className={className}
           style={style}
         >
@@ -106,7 +110,7 @@ export const BaseRender = memo(function BaseRender({
       return (
         <FrameElement
           element={element}
-          editorState={editorState}
+          isSelected={isSelected}
           className={className}
           style={style}
           customRender={customRender}

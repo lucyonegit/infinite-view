@@ -105,6 +105,8 @@ export interface InteractionState {
   creatingType?: ElementType;
   /** 正在编辑中的元素 ID */
   editingId?: string | null;
+  /** 是否正在进行全局交互（拖拽、缩放等），用于优化渲染性能 */
+  isInteracting: boolean;
 }
 
 // ============ 编辑器状态 ============

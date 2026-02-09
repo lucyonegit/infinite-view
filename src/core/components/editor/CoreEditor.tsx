@@ -213,7 +213,7 @@ export function CoreEditor({
         </div>
       </InfiniteViewer>
 
-      {selectionBoundingBox && (() => {
+      {!interaction.isInteracting && selectionBoundingBox && (() => {
         const screenPos = worldToScreen(selectionBoundingBox.centerX, selectionBoundingBox.y);
         const selectedElement = selectedIds.length === 1 ? elements.find(el => el.id === selectedIds[0]) : undefined;
         return (

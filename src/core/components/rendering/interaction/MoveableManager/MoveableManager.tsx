@@ -127,12 +127,14 @@ export const MoveableManager = forwardRef<MoveableManagerRef, MoveableManagerPro
           }
           
           isDraggingRef.current = true;
+          engine.setInteraction({ isDragging: true, isInteracting: true });
         }}
         onDrag={handleDrag}
         onDragEnd={() => { 
           isDraggingRef.current = false; 
           lastEventRef.current = null; 
           engine.setHoverFrame(null);
+          engine.setInteraction({ isDragging: false, isInteracting: false });
           
           const targetId = targets[0]?.getAttribute('data-element-id');
           const element = elements.find((el: Element) => el.id === targetId);
@@ -141,7 +143,7 @@ export const MoveableManager = forwardRef<MoveableManagerRef, MoveableManagerPro
           }
         }}
         onResizeStart={(e) => {
-          engine.setInteraction({ isResizing: true });
+          engine.setInteraction({ isResizing: true, isInteracting: true });
           const targetId = e.target.getAttribute('data-element-id');
           const targetElement = elements.find((el: Element) => el.id === targetId);
           if (targetElement) {
@@ -152,9 +154,17 @@ export const MoveableManager = forwardRef<MoveableManagerRef, MoveableManagerPro
         }}
         onResizeEnd={handleResizeEnd}
         onResize={handleResize}
-        onDragGroupStart={() => { isDraggingRef.current = true; }}
+        onDragGroupStart={() => { 
+          isDraggingRef.current = true; 
+          engine.setInteraction({ isDragging: true, isInteracting: true });
+        }}
         onDragGroup={handleDragGroup}
-        onDragGroupEnd={() => { isDraggingRef.current = false; lastEventRef.current = null; engine.setHoverFrame(null); }}
+        onDragGroupEnd={() => { 
+          isDraggingRef.current = false; 
+          lastEventRef.current = null; 
+          engine.setHoverFrame(null); 
+          engine.setInteraction({ isDragging: false, isInteracting: false });
+        }}
         onResizeGroup={handleResizeGroup}
         onClick={(e) => {
           if (e.inputEvent.detail === 2) {

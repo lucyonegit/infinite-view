@@ -1,11 +1,11 @@
 import React, { memo, useMemo } from 'react';
-import type { Element, EditorState } from '../../../engine';
+import type { Element } from '../../../engine';
 
 interface RectElementProps {
   /** 元素数据 */
   element: Element;
-  /** 编辑器状态 */
-  editorState?: EditorState;
+  /** 是否被选中 */
+  isSelected?: boolean;
   /** 子元素 - 支持渲染 loading、overlay 等自定义 UI */
   children?: React.ReactNode;
   /** 额外的 className，会与默认 className 合并 */
@@ -16,19 +16,14 @@ interface RectElementProps {
 
 /**
  * RectElement - 矩形元素渲染组件
- * 
- * 支持通过 className 和 style 进行样式覆写，
- * 通过 children 渲染自定义 UI 内容。
  */
 export const RectElement = memo(function RectElement({
   element,
-  editorState,
+  isSelected = false,
   children,
   className,
   style,
 }: RectElementProps) {
-  const isSelected = editorState?.selectedIds.includes(element.id) ?? false;
-
   const containerStyle = useMemo<React.CSSProperties>(() => ({
     position: 'absolute',
     left: element.x,
@@ -43,7 +38,6 @@ export const RectElement = memo(function RectElement({
       ? `${element.style.strokeWidth || 1}px solid ${element.style.stroke}` 
       : undefined,
     opacity: element.style?.opacity,
-    // 业务层传入的 style 会覆盖默认样式
     ...style,
   }), [element, style]);
 

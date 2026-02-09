@@ -17,7 +17,7 @@ interface UseMoveableEventsProps extends Pick<MoveableManagerProps,
 
 export function useMoveableEvents({
   engine,
-  elements,
+  elements: _elements, // unused now, kept for signature but engine.getState() preferred
   screenToWorld,
   setKeepRatio,
   lastEventRef,
@@ -31,6 +31,7 @@ export function useMoveableEvents({
     const id = target.getAttribute('data-element-id');
     if (!id) return;
 
+    const { elements } = engine.getState();
     const element = elements.find((el: Element) => el.id === id);
     if (!element) return;
 
@@ -42,12 +43,13 @@ export function useMoveableEvents({
 
     // 调用引擎
     engine.handleDrag([id], [delta[0], delta[1]], mouseWorld);
-  }, [elements, screenToWorld, onDrag, engine, lastEventRef]);
+  }, [screenToWorld, onDrag, engine, lastEventRef]);
 
   const handleResize = useCallback(({ target, width, height, drag, direction }: OnResize) => {
     const id = target.getAttribute('data-element-id');
     if (!id) return;
 
+    const { elements } = engine.getState();
     const element = elements.find((el: Element) => el.id === id);
     if (!element) return;
 
@@ -56,6 +58,10 @@ export function useMoveableEvents({
 
     if (element.type === 'text') {
       const isCorner = direction[0] !== 0 && direction[1] !== 0;
+
+      if (!engine.getState().interaction.isResizing) {
+        engine.setInteraction({ isResizing: true, isInteracting: true });
+      }
 
       if (isCorner && resizeStartElementRef.current) {
         const newFontSize = calculateNewFontSize(resizeStartElementRef.current, newWidth);
@@ -84,6 +90,10 @@ export function useMoveableEvents({
         });
       }
     } else {
+      if (!engine.getState().interaction.isResizing) {
+        engine.setInteraction({ isResizing: true, isInteracting: true });
+      }
+
       target.style.width = `${newWidth}px`;
       target.style.height = `${newHeight}px`;
       target.style.transform = `translate(${drag.beforeTranslate[0]}px, ${drag.beforeTranslate[1]}px)`;
@@ -98,15 +108,16 @@ export function useMoveableEvents({
 
     const isCorner = direction[0] !== 0 && direction[1] !== 0;
     onResize?.({ elementId: id, element, width: newWidth, height: newHeight, direction: direction as [number, number], isCorner });
-  }, [elements, onResize, engine]);
+  }, [onResize, engine]);
 
   const handleResizeEnd = useCallback(({ target }: { target: HTMLElement | SVGElement }) => {
     setKeepRatio(false);
-    engine.setInteraction({ isResizing: false });
+    engine.setInteraction({ isResizing: false, isInteracting: false });
     resizeStartElementRef.current = null;
 
     const id = target.getAttribute('data-element-id');
     if (id) {
+      const { elements } = engine.getState();
       const element = elements.find((el: Element) => el.id === id);
       if (element) {
         onResizeEnd?.({ elementId: id, element });
@@ -129,7 +140,7 @@ export function useMoveableEvents({
         target.style.transform = '';
       }
     }
-  }, [elements, onResizeEnd, engine, setKeepRatio]);
+  }, [onResizeEnd, engine, setKeepRatio]);
 
   const handleDragGroup = useCallback(({ events }: OnDragGroup) => {
     if (events.length === 0) return;

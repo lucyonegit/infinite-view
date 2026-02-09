@@ -39,6 +39,7 @@ const initialInteraction: InteractionState = {
   isDragging: false,
   isPanning: false,
   isResizing: false,
+  isInteracting: false,
   isMarqueeSelecting: false,
   isCreating: false,
   editingId: null,
@@ -536,6 +537,7 @@ export class EditorEngine {
       interaction: {
         ...this.state.interaction,
         isDragging: true,
+        isInteracting: true,
         startPoint,
       },
     });
@@ -543,7 +545,7 @@ export class EditorEngine {
 
   public stopDragging() {
     this.setState({
-      interaction: { ...this.state.interaction, isDragging: false, startPoint: undefined },
+      interaction: { ...this.state.interaction, isDragging: false, isInteracting: false, startPoint: undefined },
     });
   }
 
