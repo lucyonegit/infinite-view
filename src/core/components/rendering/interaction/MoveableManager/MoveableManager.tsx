@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, forwardRef, useImperativeHandle } from 'react';
+import { useRef, useEffect, useLayoutEffect, useState, forwardRef, useImperativeHandle } from 'react';
 import Moveable from 'react-moveable';
 import { useEngineInstance } from '../../../../react/context/useEngineInstance';
 import { useEditorEngine } from '../../../../react/hooks/useEditorEngine';
@@ -78,9 +78,29 @@ export const MoveableManager = forwardRef<MoveableManagerRef, MoveableManagerPro
       renderDirections = ['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se'],
     } = options;
 
-    useEffect(() => {
-      if (moveableRef.current) moveableRef.current.updateRect();
+    useLayoutEffect(() => {
+      if (moveableRef.current) {
+        requestAnimationFrame(() => {
+          moveableRef.current?.updateTarget();
+          moveableRef.current?.updateRect();
+        });
+      }
     }, [selectedIds, elements]);
+
+    // 监听目标元素的尺寸变化，实时更新 Moveable 选框
+    useEffect(() => {
+      if (targets.length === 0 || !moveableRef.current) return;
+
+      const observer = new ResizeObserver(() => {
+        moveableRef.current?.updateRect();
+      });
+
+      targets.forEach(target => {
+        if (target) observer.observe(target);
+      });
+
+      return () => observer.disconnect();
+    }, [targets]);
 
     // 暴露 API
     useImperativeHandle(ref, () => ({

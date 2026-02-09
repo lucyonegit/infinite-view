@@ -113,7 +113,7 @@ export const TextElement = memo(function TextElement({
       selection?.removeAllRanges();
       selection?.addRange(range);
     }
-  }, [isEditing]);
+  }, [isEditing, element.content]);
 
   const handleInput = useCallback((e: React.FormEvent<HTMLSpanElement>) => {
     const newContent = (e.target as HTMLSpanElement).innerText;
@@ -134,8 +134,7 @@ export const TextElement = memo(function TextElement({
     top: element.y,
     width: element.fixedWidth ? element.width : 'auto',
     height: 'auto',
-    minWidth: 10,
-    minHeight: 30,
+    minWidth: 0,
     transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
     zIndex: element.zIndex,
     ...style,
