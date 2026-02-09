@@ -197,7 +197,7 @@ export function CoreEditor({
         onPinch={(e) => setZoom(e.zoom)}
       >
         <div className="editor-viewport">
-          <div className="grid-background" />
+          <div className="grid-background" style={{ '--zoom': zoom } as React.CSSProperties} />
           <div className="elements-layer">
             {elements.filter(el => !el.parentId).map((element) => (
               <BaseRender key={element.id} element={element} />

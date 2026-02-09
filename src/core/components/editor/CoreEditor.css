@@ -53,11 +53,39 @@
   width: 100%;
   height: 100%;
   background-image:
-    linear-gradient(rgba(253, 253, 253, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-  background-size: 50px 50px;
+    linear-gradient(
+      rgba(255, 255, 255, 0.15) calc(1px / var(--zoom)),
+      transparent 0
+    ),
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.15) calc(1px / var(--zoom)),
+      transparent 0
+    ),
+    linear-gradient(
+      rgba(255, 255, 255, calc(0.03 * clamp(0, (var(--zoom) - 0.3) * 5, 1)))
+        calc(1px / var(--zoom)),
+      transparent 0
+    ),
+    linear-gradient(
+      90deg,
+      rgba(255, 255, 255, calc(0.03 * clamp(0, (var(--zoom) - 0.3) * 5, 1)))
+        calc(1px / var(--zoom)),
+      transparent 0
+    );
+  background-size:
+    50px 50px,
+    50px 50px,
+    10px 10px,
+    10px 10px;
   pointer-events: none;
   z-index: -1;
+}
+
+/* Snapping guidelines visibility */
+.custom-moveable .moveable-line.moveable-guideline {
+  background: #3a7ce1 !important;
+  opacity: 0.8 !important;
 }
 
 /* 元素层 */
