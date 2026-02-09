@@ -1,11 +1,11 @@
 import React, { memo, useMemo } from 'react';
-import type { Element, EditorState } from '../../../engine';
+import type { Element } from '../../../engine';
 
 interface ImageElementProps {
   /** 元素数据 */
   element: Element;
-  /** 编辑器状态 */
-  editorState?: EditorState;
+  /** 是否被选中 */
+  isSelected?: boolean;
   /** 子元素 - 支持渲染 loading、overlay 等自定义 UI */
   children?: React.ReactNode;
   /** 额外的 className，会与默认 className 合并 */
@@ -16,19 +16,14 @@ interface ImageElementProps {
 
 /**
  * ImageElement - 图片元素渲染组件
- * 
- * 支持通过 className 和 style 进行样式覆写，
- * 通过 children 渲染自定义 UI 内容。
  */
 export const ImageElement = memo(function ImageElement({
   element,
-  editorState,
+  isSelected = false,
   children,
   className,
   style,
 }: ImageElementProps) {
-  const isSelected = editorState?.selectedIds.includes(element.id) ?? false;
-
   const containerStyle = useMemo<React.CSSProperties>(() => ({
     position: 'absolute',
     left: element.x,
@@ -40,7 +35,6 @@ export const ImageElement = memo(function ImageElement({
     borderRadius: element.style?.borderRadius,
     opacity: element.style?.opacity,
     overflow: 'hidden',
-    // 业务层传入的 style 会覆盖默认样式
     ...style,
   }), [element, style]);
 

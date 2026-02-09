@@ -1,6 +1,6 @@
 import React, { memo, useMemo } from 'react';
-import type { Element, EditorState } from '../../../engine';
-import { useEditorEngine } from '../../../react/hooks/useEditorEngine';
+import type { Element } from '../../../engine';
+import { useEditorEngine, useEditorEngineShallow } from '../../../react/hooks/useEditorEngine';
 import { useEngineInstance } from '../../../react/context/useEngineInstance';
 import { BaseRender } from '../BaseRender';
 import type { CustomRenderConfig } from '../BaseRender';
@@ -8,8 +8,8 @@ import type { CustomRenderConfig } from '../BaseRender';
 interface FrameElementProps {
   /** 元素数据 */
   element: Element;
-  /** 编辑器状态 */
-  editorState?: EditorState;
+  /** 是否被选中 */
+  isSelected?: boolean;
   /** 子元素 - 支持渲染自定义 UI 内容 */
   children?: React.ReactNode;
   /** 额外的 className，会与默认 className 合并 */
@@ -23,23 +23,28 @@ interface FrameElementProps {
 /**
  * FrameElement - Frame 容器元素渲染组件
  * 
- * 支持子元素渲染、标题栏显示、裁切功能。
+ * 优化点：
+ * 1. 使用 useEditorEngineShallow 订阅子元素，确保只在子元素列表真实变化时触发重渲染。
+ * 2. 选择器直接从 state.elements 中过滤，不依赖 Props，避免状态不同步导致的闪烁。
  */
 export const FrameElement = memo(function FrameElement({
   element,
-  editorState,
+  isSelected = false,
   children,
   className,
   style,
   customRender,
 }: FrameElementProps) {
   const engine = useEngineInstance();
-  const isSelected = editorState?.selectedIds.includes(element.id) ?? false;
-  const hoverFrameId = editorState?.hoverFrameId;
-  const isHovered = hoverFrameId === element.id;
   
-  // 订阅子元素
-  const childElements = useEditorEngine(engine, (state) => 
+  // 仅在当前 Frame 内部订阅必要状态
+  const isHovered = useEditorEngine(engine, (state) => state.hoverFrameId === element.id);
+  
+  /**
+   * 修复点：不再依赖 props 中的 element.children，而是直接从最新的 state 中过滤。
+   * 这保证了当元素在根节点和 Frame 之间切换时，父容器能与全局状态同步渲染，避免出现“元素短暂消失”的情况。
+   */
+  const childElements = useEditorEngineShallow(engine, (state) => 
     state.elements.filter(el => el.parentId === element.id)
   );
 
@@ -51,12 +56,10 @@ export const FrameElement = memo(function FrameElement({
     height: element.height,
     transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
     zIndex: element.zIndex,
-    // Frame 容器透明，背景由内部渲染
     background: 'transparent',
     border: 'none',
-    // 业务层传入的 style 会覆盖默认样式
     ...style,
-  }), [element, style]);
+  }), [element.x, element.y, element.width, element.height, element.rotation, element.zIndex, style]);
 
   const backgroundStyle = useMemo<React.CSSProperties>(() => ({
     position: 'absolute',
@@ -88,7 +91,6 @@ export const FrameElement = memo(function FrameElement({
       data-element-id={element.id}
       data-frame="true"
     >
-      {/* Frame 标题 - 在裁剪层之外 */}
       <div className="frame-label w-full flex-row justify-between">
         <span className='flex flex-row items-center'>
           <span className="frame-drag-handle">
@@ -103,12 +105,8 @@ export const FrameElement = memo(function FrameElement({
         <span>{element.width} × {element.height}</span>
       </div>
       
-      {/* 裁剪容器 */}
       <div className="frame-content">
-        {/* 背景层 - 在裁剪层内部 */}
         <div className="frame-background" style={backgroundStyle} />
-        
-        {/* 子元素层 */}
         <div className="frame-children">
           {childElements.map((child) => (
             <BaseRender 
