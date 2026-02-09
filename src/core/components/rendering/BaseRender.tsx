@@ -61,13 +61,9 @@ export const BaseRender = memo(function BaseRender({
 
   // 获取对应元素类型的自定义渲染函数
   const customRenderer = customRender?.[element.type];
+  const customChildren = customRenderer ? customRenderer(element, editorState) : null;
   
-  // 如果有自定义渲染函数，使用自定义渲染
-  if (customRenderer) {
-    return <>{customRenderer(element, editorState)}</>;
-  }
-  
-  // 默认渲染：根据元素类型选择对应组件
+  // 默认渲染：根据元素类型选择对应组件，并将 customRenderer 的结果作为 children 传入
   switch (element.type) {
     case 'rectangle':
       return (
@@ -76,7 +72,9 @@ export const BaseRender = memo(function BaseRender({
           editorState={editorState}
           className={className}
           style={style}
-        />
+        >
+          {customChildren}
+        </RectElement>
       );
     case 'text':
       return (
@@ -89,7 +87,9 @@ export const BaseRender = memo(function BaseRender({
           onEndEditing={() => engine.setEditingId(null)}
           className={className}
           style={style}
-        />
+        >
+          {customChildren}
+        </TextElement>
       );
     case 'image':
       return (
@@ -98,7 +98,9 @@ export const BaseRender = memo(function BaseRender({
           editorState={editorState}
           className={className}
           style={style}
-        />
+        >
+          {customChildren}
+        </ImageElement>
       );
     case 'frame':
       return (
@@ -108,7 +110,9 @@ export const BaseRender = memo(function BaseRender({
           className={className}
           style={style}
           customRender={customRender}
-        />
+        >
+          {customChildren}
+        </FrameElement>
       );
     default:
       return null;
