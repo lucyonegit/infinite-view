@@ -1,5 +1,5 @@
 import type { StateCreator } from 'zustand';
-import type { Viewport } from '../../core/types';
+import type { Viewport } from '../../core/engine/types';
 import { EDITOR_CONFIG } from '../../constants/editor';
 
 // ============ Slice 状态接口 ============

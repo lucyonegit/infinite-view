@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import type { Point } from '../../types';
+import type { Point } from '../../engine/types';
 
 /**
  * 坐标系统 Hook

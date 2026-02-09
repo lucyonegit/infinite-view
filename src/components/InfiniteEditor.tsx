@@ -7,7 +7,7 @@ import { MoveableManager } from './MoveableManager';
 import { SelectoManager } from './SelectoManager';
 import { FloatingToolbar } from './FloatingToolbar';
 import { exportSelectedFrameAsImage } from '../utils/exportUtils';
-import type { Point, Bounds } from '../core/types';
+import type { Point, Bounds } from '../core/engine/types';
 import './InfiniteEditor.css';
 
 interface InfiniteEditorProps {

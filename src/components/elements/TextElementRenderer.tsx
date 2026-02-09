@@ -1,5 +1,5 @@
 import React, { memo, useCallback, useEffect, useRef, useLayoutEffect } from 'react';
-import type { Element } from '../../core/types';
+import type { Element } from '../../core/engine/types';
 import { useEditorStore } from '../../store/editorStore';
 import { getTextCommonStyle } from './utils/textUtils';
 

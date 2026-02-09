@@ -1,6 +1,6 @@
 import React from 'react';
 import { useEditorStore } from '../../store/editorStore';
-import type { Element } from '../../core/types';
+import type { Element } from '../../core/engine/types';
 
 interface ImageToolBarProps {
   element: Element;

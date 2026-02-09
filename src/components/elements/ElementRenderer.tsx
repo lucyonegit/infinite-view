@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import type { Element } from '../../core/types';
+import type { Element } from '../../core/engine/types';
 import { BasicElementRenderer } from './BasicElementRenderer';
 import { FrameRenderer } from './FrameRenderer';
 import './ElementRenderer.css';

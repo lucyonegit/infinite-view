@@ -2,7 +2,7 @@
  * 导出工具 - 将 Frame 或整个视口导出为图片
  */
 
-import type { Element } from '../core/types';
+import type { Element } from '../core/engine/types';
 
 /**
  * 导出单个 Frame 为图片

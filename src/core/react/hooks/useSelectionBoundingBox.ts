@@ -1,5 +1,5 @@
-import { useEditorEngineShallow } from '../useEditorEngine';
-import { useEngineInstance } from '../EditorProvider';
+import { useEditorEngineShallow } from './useEditorEngine';
+import { useEngineInstance } from '../context/useEngineInstance';
 
 /**
  * 选区包围盒类型

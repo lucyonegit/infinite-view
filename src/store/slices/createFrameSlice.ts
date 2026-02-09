@@ -1,5 +1,5 @@
 import type { StateCreator } from 'zustand';
-import type { Element, Point } from '../../core/types';
+import type { Element, Point } from '../../core/engine/types';
 
 // ============ Slice 接口 ============
 

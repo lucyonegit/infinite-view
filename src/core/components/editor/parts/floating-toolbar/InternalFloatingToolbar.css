@@ -1,0 +1,205 @@
+.floating-toolbar-container {
+  position: fixed;
+  z-index: 1000;
+  transform: translate(-50%, -100%); /* 居中并定位在上方 */
+  margin-top: -24px; /* 与元素的间距 */
+  pointer-events: auto;
+  user-select: none;
+  animation: toolbar-in 0.2s ease-out;
+}
+
+@keyframes toolbar-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -80%);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -100%);
+  }
+}
+
+.floating-toolbar {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px) saturate(180%);
+  -webkit-backdrop-filter: blur(12px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 16px;
+  padding: 8px 12px;
+  box-shadow:
+    0 10px 25px -5px rgba(0, 0, 0, 0.1),
+    0 8px 10px -6px rgba(0, 0, 0, 0.1),
+    0 0 0 1px rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.toolbar-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: #333;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  white-space: nowrap;
+}
+
+.toolbar-item:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.toolbar-item:active {
+  background: rgba(0, 0, 0, 0.1);
+  transform: scale(0.98);
+}
+
+.toolbar-item .icon {
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toolbar-item.export-action {
+  color: #4f46e5;
+}
+
+.toolbar-item.export-action:hover {
+  background: rgba(79, 70, 229, 0.1);
+}
+
+.divider {
+  width: 1px;
+  height: 20px;
+  background: rgba(0, 0, 0, 0.1);
+  margin: 0 6px;
+}
+
+.toolbar-item.more {
+  font-weight: bold;
+}
+
+.toolbar-item.active {
+  background: rgba(26, 115, 232, 0.1);
+  color: #1a73e8;
+}
+
+/* Color Picker Bubble */
+.color-picker-bubble {
+  position: absolute;
+  top: -60px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  padding: 8px;
+  border-radius: 12px;
+  display: flex;
+  gap: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  z-index: 1000;
+  animation: slideUp 0.2s cubic-bezier(0, 0, 0.2, 1);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 10px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.color-swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: transform 0.15s;
+  padding: 0;
+}
+
+.color-swatch:hover {
+  transform: scale(1.2);
+}
+
+.color-swatch.transparent {
+  background: white;
+  position: relative;
+  overflow: hidden;
+}
+
+.color-swatch.transparent::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 1px;
+  background: red;
+  transform: rotate(45deg);
+}
+
+.color-indicator {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  margin-bottom: 2px;
+  flex-shrink: 0;
+}
+
+.number-input {
+  width: 40px;
+  height: 24px;
+  background: rgba(0, 0, 0, 0.05);
+  border: none;
+  border-radius: 4px;
+  padding: 0 4px;
+  font-size: 12px;
+  font-family: inherit;
+  color: #333;
+  outline: none;
+  text-align: center;
+  transition: background 0.2s;
+}
+
+.number-input:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.number-input:focus {
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 1px #1a73e8;
+}
+
+/* Hide number input arrows (spinners) */
+.number-input::-webkit-inner-spin-button,
+.number-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.toolbar-item.no-hover {
+  cursor: default;
+}
+
+.toolbar-item.no-hover:hover {
+  background: transparent;
+}

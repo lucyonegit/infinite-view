@@ -20,7 +20,7 @@ import {
   BgColorsOutlined
 } from '@ant-design/icons';
 import { useEditorStore } from '../../store/editorStore';
-import type { Element } from '../../core/types';
+import type { Element } from '../../core/engine/types';
 
 interface TextToolBarProps {
   element: Element;

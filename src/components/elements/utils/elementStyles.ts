@@ -1,4 +1,4 @@
-import type { Element } from '../../../core/types';
+import type { Element } from '../../../core/engine/types';
 
 /**
  * 获取元素的 CSS 样式
