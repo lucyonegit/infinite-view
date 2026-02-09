@@ -65,9 +65,7 @@ export const TextElement = memo(function TextElement({
   // 自动进入编辑模式
   useEffect(() => {
     if (isSelected && !element.content && !isEditing && onStartEditing) {
-      requestAnimationFrame(() => {
-        onStartEditing(element.id);
-      });
+      onStartEditing(element.id);
     }
   }, [isSelected, element.content, isEditing, element.id, onStartEditing]);
 
@@ -103,15 +101,30 @@ export const TextElement = memo(function TextElement({
   useLayoutEffect(() => {
     if (isEditing && editableRef.current) {
       const el = editableRef.current;
-      el.innerText = element.content || '';
-      el.focus();
+      const targetContent = element.content || '';
       
-      const range = document.createRange();
+      if (el.innerText !== targetContent) {
+        el.innerText = targetContent;
+      }
+      
+      // 始终确保有焦点
+      if (document.activeElement !== el) {
+        el.focus();
+      }
+
+      // 强制设置光标，特别是对于空内容
       const selection = window.getSelection();
-      range.selectNodeContents(el);
-      range.collapse(false);
-      selection?.removeAllRanges();
-      selection?.addRange(range);
+      if (selection) {
+        const range = document.createRange();
+        if (el.childNodes.length > 0) {
+          range.setStart(el.childNodes[0], el.innerText.length);
+        } else {
+          range.selectNodeContents(el);
+        }
+        range.collapse(false);
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
     }
   }, [isEditing, element.content]);
 
@@ -134,7 +147,7 @@ export const TextElement = memo(function TextElement({
     top: element.y,
     width: element.fixedWidth ? element.width : 'auto',
     height: 'auto',
-    minWidth: 0,
+    minWidth: 20,
     transform: element.rotation ? `rotate(${element.rotation}deg)` : undefined,
     zIndex: element.zIndex,
     ...style,
@@ -160,6 +173,7 @@ export const TextElement = memo(function TextElement({
       <span
         ref={editableRef}
         contentEditable={isEditing}
+        autoFocus={isEditing}
         suppressContentEditableWarning
         onInput={handleInput}
         onBlur={handleBlur}

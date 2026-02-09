@@ -82,10 +82,57 @@
   z-index: -1;
 }
 
-/* Snapping guidelines visibility */
+/* Moveable 选框样式定制 */
+.custom-moveable.moveable-control-box {
+  --moveable-color: #4a8dfe;
+}
+
+.custom-moveable .moveable-line {
+  background: var(--moveable-color) !important;
+}
+
+.custom-moveable .moveable-control {
+  background: #ffffff !important;
+  border: 1.5px solid var(--moveable-color) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+  box-sizing: border-box !important;
+  width: 12px !important;
+  height: 12px !important;
+  margin-top: -6px !important;
+  margin-left: -6px !important;
+}
+
+/* 圆形角点 */
+.custom-moveable .moveable-nw,
+.custom-moveable .moveable-ne,
+.custom-moveable .moveable-sw,
+.custom-moveable .moveable-se {
+  border-radius: 50% !important;
+}
+
+/* 垂直药丸形 (侧边) */
+.custom-moveable .moveable-w,
+.custom-moveable .moveable-e {
+  width: 6px !important;
+  height: 16px !important;
+  border-radius: 4px !important;
+  margin-left: -3px !important;
+  margin-top: -8px !important;
+}
+
+/* 水平药丸形 (上下) */
+.custom-moveable .moveable-n,
+.custom-moveable .moveable-s {
+  width: 16px !important;
+  height: 6px !important;
+  border-radius: 4px !important;
+  margin-top: -3px !important;
+  margin-left: -8px !important;
+}
+
 .custom-moveable .moveable-line.moveable-guideline {
-  background: #3a7ce1 !important;
-  opacity: 0.8 !important;
+  background: var(--moveable-color) !important;
+  opacity: 0.6 !important;
 }
 
 /* 元素层 */

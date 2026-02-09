@@ -650,7 +650,10 @@ export class EditorEngine {
     const element = this.state.elements.find((el) => el.id === id);
 
     this.setState({
-      interaction: initialInteraction,
+      interaction: {
+        ...initialInteraction,
+        editingId: interaction.creatingType === 'text' ? id : null,
+      },
       selectedIds: [id],
       activeTool: 'select',
       lastSelectionEvent: null,
