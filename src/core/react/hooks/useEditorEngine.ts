@@ -1,4 +1,4 @@
-import { useSyncExternalStore, useCallback, useRef } from 'react';
+import { useSyncExternalStore, useCallback, useRef, useLayoutEffect } from 'react';
 import { EditorEngine, type EditorState } from '../../engine/EditorEngine';
 
 /**
@@ -44,34 +44,42 @@ export function useEditorEngine<T>(
   const lastStateRef = useRef<EditorState | null>(null);
   const lastResultRef = useRef<T | null>(null);
 
+  const selectorRef = useRef(selector);
+  const equalityFnRef = useRef(equalityFn);
+
+  useLayoutEffect(() => {
+    selectorRef.current = selector;
+    equalityFnRef.current = equalityFn;
+  });
+
   const subscribe = useCallback((onStoreChange: () => void) => {
     return engine.subscribe(onStoreChange);
   }, [engine]);
 
   const getSnapshot = useCallback(() => {
     const nextState = engine.getState();
-    const lastState = lastStateRef.current;
+    const nextResult = selectorRef.current(nextState);
 
-    // 如果整体状态没变，直接返回缓存结果
-    if (nextState === lastState && lastResultRef.current !== null) {
+    // If the overall state hasn't changed, and we have a cached result, return it.
+    // This handles cases where the engine's state object reference itself is stable.
+    if (lastResultRef.current !== null && lastStateRef.current === nextState) {
       return lastResultRef.current;
     }
 
-    // 计算新结果
-    const nextResult = selector(nextState);
-
-    // 关键点：如果新旧结果满足“相等性判断”（例如浅比较相等），则返回旧结果的引用
-    // 这解决了 selector 内部执行 filter/map 等操作返回新引用的问题
-    if (lastResultRef.current !== null && equalityFn(lastResultRef.current, nextResult)) {
+    // If the new result is equal to the last cached result according to equalityFn,
+    // return the last cached result to maintain reference stability.
+    if (lastResultRef.current !== null && equalityFnRef.current(lastResultRef.current, nextResult)) {
+      // Update lastStateRef even if result is the same, as the underlying state might have changed
+      // but the selected part is still equal.
       lastStateRef.current = nextState;
       return lastResultRef.current;
     }
 
-    // 更新缓存
+    // Otherwise, update cache with the new state and result.
     lastStateRef.current = nextState;
     lastResultRef.current = nextResult;
     return nextResult;
-  }, [engine, selector, equalityFn]);
+  }, [engine]); // selector and equalityFn removed from dependencies
 
   // 使用 useSyncExternalStore 确保与 React 的并发模式兼容
   return useSyncExternalStore(subscribe, getSnapshot);

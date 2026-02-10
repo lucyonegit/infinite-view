@@ -7,8 +7,12 @@ import type {
   ElementType,
   Bounds
 } from './types';
-import { EDITOR_CONFIG } from '../../constants/editor';
 import { calculateNewFontSize } from '../../components/elements/utils/textUtils';
+import { ViewportManager } from './modules/ViewportManager';
+import { ElementManager } from './modules/ElementManager';
+import { InteractionManager } from './modules/InteractionManager';
+import { getElementWorldPos, findFrameAtPoint } from './utils';
+import { createRandomImageElement } from './utils/bizUtils';
 
 export interface EditorState {
   viewport: Viewport;
@@ -62,6 +66,8 @@ export type Listener = (state: EditorState) => void;
 export class EditorEngine {
   private state: EditorState;
   private listeners: Set<Listener> = new Set();
+  private batchDepth = 0;
+  private needsNotify = false;
 
   constructor(initialState?: Partial<EditorState>) {
     this.state = {
@@ -87,7 +93,28 @@ export class EditorEngine {
   private setState(updates: Partial<EditorState> | ((state: EditorState) => Partial<EditorState>)) {
     const newState = typeof updates === 'function' ? updates(this.state) : updates;
     this.state = { ...this.state, ...newState };
-    this.notify();
+
+    if (this.batchDepth > 0) {
+      this.needsNotify = true;
+    } else {
+      this.notify();
+    }
+  }
+
+  /**
+   * 批量执行多次状态更新，最后只进行一次通知
+   */
+  public transaction(fn: () => void) {
+    this.batchDepth++;
+    try {
+      fn();
+    } finally {
+      this.batchDepth--;
+      if (this.batchDepth === 0 && this.needsNotify) {
+        this.needsNotify = false;
+        this.notify();
+      }
+    }
   }
 
   public subscribe(listener: Listener): () => void {
@@ -101,45 +128,22 @@ export class EditorEngine {
 
   // ========== 视口操作 (Viewport) ==========
 
-  public setViewport(viewport: Partial<Viewport>) {
-    this.setState({
-      viewport: { ...this.state.viewport, ...viewport },
-    });
+  public setViewport(updates: Partial<Viewport>) {
+    this.setState(state => ({
+      viewport: ViewportManager.setViewport(state.viewport, updates)
+    }));
   }
 
   public pan(deltaX: number, deltaY: number) {
-    this.setState({
-      viewport: {
-        ...this.state.viewport,
-        x: this.state.viewport.x + deltaX,
-        y: this.state.viewport.y + deltaY,
-      },
-    });
+    this.setState(state => ({
+      viewport: ViewportManager.pan(state.viewport, deltaX, deltaY)
+    }));
   }
 
   public zoomTo(zoom: number, centerX?: number, centerY?: number) {
-    const clampedZoom = Math.min(
-      Math.max(zoom, EDITOR_CONFIG.ZOOM.MIN),
-      EDITOR_CONFIG.ZOOM.MAX
-    );
-
-    const { viewport } = this.state;
-
-    if (centerX !== undefined && centerY !== undefined) {
-      const zoomRatio = clampedZoom / viewport.zoom;
-      this.setState({
-        viewport: {
-          x: centerX - (centerX - viewport.x) * zoomRatio,
-          y: centerY - (centerY - viewport.y) * zoomRatio,
-          zoom: clampedZoom,
-        },
-      });
-      return;
-    }
-
-    this.setState({
-      viewport: { ...viewport, zoom: clampedZoom },
-    });
+    this.setState(state => ({
+      viewport: ViewportManager.zoomTo(state.viewport, zoom, centerX, centerY)
+    }));
   }
 
   public resetViewport() {
@@ -148,57 +152,39 @@ export class EditorEngine {
 
   // ========== 元素操作 (Elements) ==========
 
-  private generateId(): string {
-    return `el_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-  }
-
   public addElement(element: Omit<Element, 'id' | 'zIndex'>): string {
-    const id = this.generateId();
-    const { elements } = this.state;
-
-    let zIndex;
-    if (element.type === 'frame') {
-      const minZIndex = elements.reduce((min, el) => Math.min(min, el.zIndex), 0);
-      zIndex = minZIndex - 1;
-    } else if (element.type === 'text') {
-      zIndex = 5000;
-    } else {
-      const maxZIndex = elements.filter(el => el.type !== 'text').reduce((max, el) => Math.max(max, el.zIndex), 0);
-      zIndex = maxZIndex + 1;
-    }
-
-    this.setState({
-      elements: [...elements, { ...element, id, zIndex } as Element],
+    let newId = '';
+    this.setState(state => {
+      const { id, elements } = ElementManager.addElement(state.elements, element);
+      newId = id;
+      return { elements };
     });
-
-    return id;
+    return newId;
   }
 
   public updateElement(id: string, updates: Partial<Element>) {
-    this.setState({
-      elements: this.state.elements.map(el => el.id === id ? { ...el, ...updates } : el),
-    });
+    this.setState(state => ({
+      elements: ElementManager.updateElement(state.elements, id, updates)
+    }));
   }
 
   public deleteElements(ids: string[]) {
-    this.setState({
-      elements: this.state.elements.filter(el => !ids.includes(el.id)),
-      selectedIds: this.state.selectedIds.filter(id => !ids.includes(id)),
-    });
+    this.setState(state => ({
+      elements: ElementManager.deleteElements(state.elements, ids),
+      selectedIds: state.selectedIds.filter(id => !ids.includes(id))
+    }));
   }
 
   public moveElements(ids: string[], deltaX: number, deltaY: number) {
-    this.setState({
-      elements: this.state.elements.map(el =>
-        ids.includes(el.id) ? { ...el, x: el.x + deltaX, y: el.y + deltaY } : el
-      ),
-    });
+    this.setState(state => ({
+      elements: ElementManager.moveElements(state.elements, ids, deltaX, deltaY)
+    }));
   }
 
   public resizeElement(id: string, bounds: Bounds) {
-    this.setState({
-      elements: this.state.elements.map(el => el.id === id ? { ...el, ...bounds } : el),
-    });
+    this.setState(state => ({
+      elements: ElementManager.resizeElement(state.elements, id, bounds)
+    }));
   }
 
   // --- 高级交互方法 (Encapsulated Interaction Logic) ---
@@ -212,89 +198,7 @@ export class EditorEngine {
   public handleDrag(ids: string[], delta: [number, number], mouseWorld?: Point) {
     if (ids.length === 0) return;
 
-    this.setState((state) => {
-      const nextElements = [...state.elements];
-
-      // 1. 移动所有选中的元素
-      ids.forEach(id => {
-        const idx = nextElements.findIndex(el => el.id === id);
-        if (idx === -1) return;
-
-        const el = nextElements[idx];
-        // 如果父元素也被选中，不在此处重复移动位移（Moveable 会处理组位移或由组件逻辑决定）
-        // 这里的逻辑对应于原来的 EngineMoveableManager.tsx handleDrag
-        const isParentAlsoSelected = el.parentId && ids.includes(el.parentId);
-        if (!isParentAlsoSelected) {
-          nextElements[idx] = {
-            ...el,
-            x: el.x + delta[0],
-            y: el.y + delta[1]
-          };
-        }
-      });
-
-      // 2. 如果是单个元素拖拽且提供了鼠标位置，处理 Frame 嵌套逻辑
-      let nextHoverFrameId = state.hoverFrameId;
-      if (ids.length === 1 && mouseWorld) {
-        const id = ids[0];
-        const el = nextElements.find(e => e.id === id);
-
-        if (el && el.type !== 'frame') {
-          if (el.parentId) {
-            // 已经在 Frame 内，检查是否移出
-            const parentFrame = nextElements.find(p => p.id === el.parentId);
-            if (parentFrame) {
-              const elementRight = el.x + el.width;
-              const elementBottom = el.y + el.height;
-              if (elementRight <= 0 || el.x >= parentFrame.width || elementBottom <= 0 || el.y >= parentFrame.height) {
-                // 移出逻辑已由 removeFromFrame 处理，但在 setState 内部我们需要合并逻辑
-                // 这里手动复制一部分 removeFromFrame 的逻辑以保证原子性
-                const worldPos = this.getElementWorldPos(id); // 注意：这里使用了旧 state 计算
-                const idx = nextElements.findIndex(e => e.id === id);
-                nextElements[idx] = { ...nextElements[idx], parentId: undefined, x: worldPos.x, y: worldPos.y };
-
-                const pIdx = nextElements.findIndex(e => e.id === parentFrame.id);
-                nextElements[pIdx] = {
-                  ...nextElements[pIdx],
-                  children: (nextElements[pIdx].children || []).filter(cid => cid !== id)
-                };
-              }
-            }
-          } else {
-            // 在根节点，检查是否进入 Frame
-            const targetFrame = this.findFrameAtPoint(mouseWorld.x, mouseWorld.y, ids);
-            if (targetFrame) {
-              if (nextHoverFrameId !== targetFrame.id) {
-                nextHoverFrameId = targetFrame.id;
-
-                // 执行 addToFrame 逻辑的内联版本
-                const worldPos = { x: el.x, y: el.y }; // 本身就是根节点，x/y 即 worldPos
-                const frameWorldPos = this.getElementWorldPos(targetFrame.id);
-
-                const relativeX = worldPos.x - frameWorldPos.x;
-                const relativeY = worldPos.y - frameWorldPos.y;
-
-                const idx = nextElements.findIndex(e => e.id === id);
-                nextElements[idx] = { ...el, parentId: targetFrame.id, x: relativeX, y: relativeY };
-
-                const fIdx = nextElements.findIndex(e => e.id === targetFrame.id);
-                const children = nextElements[fIdx].children || [];
-                if (!children.includes(id)) {
-                  nextElements[fIdx] = { ...nextElements[fIdx], children: [...children, id] };
-                }
-              }
-            } else {
-              nextHoverFrameId = null;
-            }
-          }
-        }
-      }
-
-      return {
-        elements: nextElements,
-        hoverFrameId: nextHoverFrameId
-      };
-    });
+    this.setState((state) => InteractionManager.handleDrag(state.elements, state.hoverFrameId, ids, delta, mouseWorld));
   }
 
   /**
@@ -362,77 +266,15 @@ export class EditorEngine {
   }
 
   public reorderElements(ids: string[], action: 'front' | 'back' | 'forward' | 'backward') {
-    const { elements } = this.state;
-    const firstElement = elements.find(el => el.id === ids[0]);
-    if (!firstElement) return;
-    const parentId = firstElement.parentId;
-
-    const sameLevelElements = elements
-      .filter(el => el.parentId === parentId)
-      .sort((a, b) => a.zIndex - b.zIndex);
-
-    const newElements = [...elements];
-
-    switch (action) {
-      case 'front': {
-        const maxZ = Math.max(...sameLevelElements.map(el => el.zIndex), 0);
-        let count = 1;
-        ids.forEach(id => {
-          const idx = newElements.findIndex(el => el.id === id);
-          if (idx !== -1) newElements[idx] = { ...newElements[idx], zIndex: maxZ + count++ };
-        });
-        break;
-      }
-      case 'back': {
-        const minZ = Math.min(...sameLevelElements.map(el => el.zIndex), 0);
-        let count = 1;
-        [...ids].reverse().forEach(id => {
-          const idx = newElements.findIndex(el => el.id === id);
-          if (idx !== -1) newElements[idx] = { ...newElements[idx], zIndex: minZ - count++ };
-        });
-        break;
-      }
-      case 'forward':
-      case 'backward': {
-        if (ids.length !== 1) break;
-        const targetId = ids[0];
-        const currentIdx = sameLevelElements.findIndex(el => el.id === targetId);
-        const swapIdx = action === 'forward' ? currentIdx + 1 : currentIdx - 1;
-
-        if (swapIdx >= 0 && swapIdx < sameLevelElements.length) {
-          const swapElement = sameLevelElements[swapIdx];
-          const targetElement = sameLevelElements[currentIdx];
-
-          const idx1 = newElements.findIndex(el => el.id === targetElement.id);
-          const idx2 = newElements.findIndex(el => el.id === swapElement.id);
-
-          const tempZ = newElements[idx1].zIndex;
-          newElements[idx1] = { ...newElements[idx1], zIndex: newElements[idx2].zIndex };
-          newElements[idx2] = { ...newElements[idx2], zIndex: tempZ };
-        }
-        break;
-      }
-    }
-
-    this.setState({ elements: newElements });
+    this.setState(state => ({
+      elements: ElementManager.reorderElements(state.elements, ids, action)
+    }));
   }
 
   // ========== Frame 父子关系 (Frames) ==========
 
   public getElementWorldPos(id: string): Point {
-    const { elements } = this.state;
-    const element = elements.find(el => el.id === id);
-    if (!element) return { x: 0, y: 0 };
-
-    if (!element.parentId) {
-      return { x: element.x, y: element.y };
-    }
-
-    const parentPos = this.getElementWorldPos(element.parentId);
-    return {
-      x: parentPos.x + element.x,
-      y: parentPos.y + element.y,
-    };
+    return getElementWorldPos(this.state.elements, id);
   }
 
   public addToFrame(elementId: string, frameId: string) {
@@ -493,25 +335,7 @@ export class EditorEngine {
   }
 
   public findFrameAtPoint(x: number, y: number, excludeIds: string[] = []): Element | null {
-    const { elements } = this.state;
-    // 找出所有非排除列表中的 Frame，按 zIndex 降序排列（最高层优先）
-    const frames = elements
-      .filter((el) => el.type === 'frame' && !excludeIds.includes(el.id))
-      .sort((a, b) => b.zIndex - a.zIndex);
-
-    for (const frame of frames) {
-      const worldPos = this.getElementWorldPos(frame.id);
-      if (
-        x >= worldPos.x &&
-        x <= worldPos.x + frame.width &&
-        y >= worldPos.y &&
-        y <= worldPos.y + frame.height
-      ) {
-        return frame;
-      }
-    }
-
-    return null;
+    return findFrameAtPoint(this.state.elements, x, y, excludeIds);
   }
 
   // ========== 高级交互 (Interaction Logic) ==========
@@ -584,11 +408,12 @@ export class EditorEngine {
     if (marqueeRect && marqueeRect.width > 5 && marqueeRect.height > 5) {
       const selectedIds = elements
         .filter((el) => {
+          const worldPos = this.getElementWorldPos(el.id);
           return (
-            el.x < marqueeRect.x + marqueeRect.width &&
-            el.x + el.width > marqueeRect.x &&
-            el.y < marqueeRect.y + marqueeRect.height &&
-            el.y + el.height > marqueeRect.y
+            worldPos.x < marqueeRect.x + marqueeRect.width &&
+            worldPos.x + el.width > marqueeRect.x &&
+            worldPos.y < marqueeRect.y + marqueeRect.height &&
+            worldPos.y + el.height > marqueeRect.y
           );
         })
         .map((el) => el.id);
@@ -682,51 +507,10 @@ export class EditorEngine {
     });
   }
 
-  public addImage(): string {
-    const { elements } = this.state;
-    const images = elements.filter(el => el.type === 'image');
-
-    const gap = EDITOR_CONFIG.LAYOUT.DEFAULT_GAP;
-    const maxWidth = EDITOR_CONFIG.LAYOUT.MAX_ROW_WIDTH;
-    const imgWidth = Math.floor(
-      Math.random() * (EDITOR_CONFIG.IMAGE.WIDTH.MAX - EDITOR_CONFIG.IMAGE.WIDTH.MIN + 1)
-    ) + EDITOR_CONFIG.IMAGE.WIDTH.MIN;
-    const imgHeight = Math.floor(
-      Math.random() * (EDITOR_CONFIG.IMAGE.HEIGHT.MAX - EDITOR_CONFIG.IMAGE.HEIGHT.MIN + 1)
-    ) + EDITOR_CONFIG.IMAGE.HEIGHT.MIN;
-
-    let nextX = 0;
-    let nextY = 0;
-
-    if (images.length > 0) {
-      const sortedImages = [...images].sort((a, b) => {
-        if (Math.abs(a.y - b.y) < 1) return b.x - a.x;
-        return b.y - a.y;
-      });
-
-      const lastImg = sortedImages[0];
-      nextX = lastImg.x + lastImg.width + gap;
-      nextY = lastImg.y;
-
-      if (nextX + imgWidth > maxWidth) {
-        nextX = 0;
-        nextY = lastImg.y + lastImg.height + gap;
-      }
-    }
-
-    return this.addElement({
-      type: 'image',
-      x: nextX,
-      y: nextY,
-      width: imgWidth,
-      height: imgHeight,
-      imageUrl: `https://picsum.photos/seed/${Date.now()}/${imgWidth}/${imgHeight}`,
-      style: {
-        borderRadius: 4,
-        fill: '#f0f0f0',
-      },
-      name: `Image ${images.length + 1}`,
-    });
+  public addImage(url: string) {
+    const { viewport } = this.state;
+    const element = createRandomImageElement(url, 1600 / viewport.zoom, 900 / viewport.zoom);
+    this.addElement(element);
   }
 
   // ========== 数据导入导出 (Persistence) ==========

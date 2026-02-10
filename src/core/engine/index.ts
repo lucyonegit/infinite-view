@@ -1,2 +1,2 @@
 export * from './EditorEngine';
-export type { Element, ElementType, EditorState, EditorDataExport, Point, Viewport, InteractionState } from './types';
+export type { Element, ElementType, Point, Viewport, InteractionState, Bounds, ToolType, ElementStyle } from './types';

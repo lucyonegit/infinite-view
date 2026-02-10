@@ -35,8 +35,10 @@ export const ImageElement = memo(function ImageElement({
     borderRadius: element.style?.borderRadius,
     opacity: element.style?.opacity,
     overflow: 'hidden',
-    ...style,
-  }), [element, style]);
+  }), [
+    element.x, element.y, element.width, element.height, 
+    element.rotation, element.zIndex, element.style, style
+  ]);
 
   const mergedClassName = useMemo(() => {
     const classes = ['infinite_view_element', 'image-element'];

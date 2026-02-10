@@ -38,8 +38,10 @@ export const RectElement = memo(function RectElement({
       ? `${element.style.strokeWidth || 1}px solid ${element.style.stroke}` 
       : undefined,
     opacity: element.style?.opacity,
-    ...style,
-  }), [element, style]);
+  }), [
+    element.x, element.y, element.width, element.height, 
+    element.rotation, element.zIndex, element.style, style
+  ]);
 
   const mergedClassName = useMemo(() => {
     const classes = ['infinite_view_element', 'rect-element'];

@@ -1,4 +1,4 @@
-import { useRef, useCallback, useState, useEffect, useImperativeHandle } from 'react';
+import { useRef, useCallback, useState, useImperativeHandle } from 'react';
 import InfiniteViewer from 'react-infinite-viewer';
 import { useEngineInstance } from '../../react/context/useEngineInstance';
 import { useEditorEngine } from '../../react/hooks/useEditorEngine';
@@ -7,9 +7,13 @@ import { InternalFloatingToolbar } from './parts/InternalFloatingToolbar';
 import { BaseRender, MoveableManager, SelectoManager, useSelectionBoundingBox } from '../rendering';
 import { exportSelectedFrameAsImage } from '../../../utils/exportUtils';
 import { useCoordinateSystem } from '../../react/hooks/useCoordinateSystem';
-import type { Element, EditorDataExport } from '../../engine/types';
+import type { Element, EditorDataExport } from '../../engine';
 import type { EditorAPI } from './EditorAPI';
+import { useCreatingGesture } from './hooks/useCreatingGesture';
+import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { useDataSync } from './hooks/useDataSync';
 import './CoreEditor.css';
+
 
 export interface CoreEditorProps {
   /** 初始数据 */
@@ -85,90 +89,14 @@ export function CoreEditor({
     getEngine: () => engine,
   }), [engine, selectedIds, elements]);
 
-  // 4. 数据变化通知 (防抖)
-  useEffect(() => {
-    if (!onDataChange) return;
-    const timer = setTimeout(() => {
-      onDataChange(engine.exportData());
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [elements, viewport, onDataChange, engine]);
+  // 4. Data change & Initial Import
+  useDataSync({ engine, elements, viewport, initialData, onDataChange });
 
-  // 5. 初始数据导入
-  useEffect(() => {
-    if (initialData) {
-      engine.importData(initialData);
-    }
-  }, [initialData, engine]);
+  // 5. Creating Gesture
+  useCreatingGesture({ engine, activeTool, interaction, screenToWorld, viewerRef, setCreatingPreview });
 
-  // 6. 手势处理 (形状创建)
-  useEffect(() => {
-    if (activeTool === 'select' || activeTool === 'hand') {
-      requestAnimationFrame(() => {
-        setCreatingPreview(null);
-      });
-      return;
-    }
-
-    const handleWindowMouseDown = (e: MouseEvent) => {
-      if (e.button !== 0) return;
-      const viewer = viewerRef.current;
-      if (!viewer) return;
-      const container = viewer.getContainer();
-      const rect = container.getBoundingClientRect();
-      if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) return;
-      if (interaction.isCreating) return;
-      
-      const worldPoint = screenToWorld(e.clientX, e.clientY);
-      engine.startCreating(activeTool === 'text' ? 'text' : activeTool === 'frame' ? 'frame' : 'rectangle', worldPoint);
-    };
-
-    const handleWindowMouseMove = (e: MouseEvent) => {
-      if (!interaction.isCreating || !interaction.startPoint) return;
-      const worldPoint = screenToWorld(e.clientX, e.clientY);
-      const x = Math.min(interaction.startPoint.x, worldPoint.x);
-      const y = Math.min(interaction.startPoint.y, worldPoint.y);
-      const width = Math.abs(worldPoint.x - interaction.startPoint.x);
-      const height = Math.abs(worldPoint.y - interaction.startPoint.y);
-      setCreatingPreview({ x, y, width, height });
-    };
-
-    const handleWindowMouseUp = (e: MouseEvent) => {
-      if (!interaction.isCreating || !interaction.startPoint) return;
-      const worldPoint = screenToWorld(e.clientX, e.clientY);
-      engine.finishCreating(worldPoint);
-      setCreatingPreview(null);
-    };
-
-    window.addEventListener('mousedown', handleWindowMouseDown);
-    window.addEventListener('mousemove', handleWindowMouseMove);
-    window.addEventListener('mouseup', handleWindowMouseUp);
-    return () => {
-      window.removeEventListener('mousedown', handleWindowMouseDown);
-      window.removeEventListener('mousemove', handleWindowMouseMove);
-      window.removeEventListener('mouseup', handleWindowMouseUp);
-    };
-  }, [activeTool, interaction.isCreating, interaction.startPoint, screenToWorld, engine]);
-
-  // 7. 键盘快捷键
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA' || (document.activeElement as HTMLElement)?.isContentEditable) return;
-      if (selectedIds.length > 0) {
-        if (e.key === '[' || e.key === '［') {
-          engine.reorderElements(selectedIds, e.altKey ? 'back' : 'backward');
-        } else if (e.key === ']' || e.key === '］') {
-          engine.reorderElements(selectedIds, e.altKey ? 'front' : 'forward');
-        } else if (e.key === 'Backspace' || e.key === 'Delete') {
-          engine.deleteElements(selectedIds);
-        } else if (e.key === 'Escape') {
-          engine.deselectAll();
-        }
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedIds, engine]);
+  // 6. Keyboard Shortcuts
+  useKeyboardShortcuts({ engine, selectedIds });
 
   // 8. 选区包围盒
   const selectionBoundingBox = useSelectionBoundingBox();

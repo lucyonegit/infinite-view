@@ -109,24 +109,3 @@ export interface InteractionState {
   isInteracting: boolean;
 }
 
-// ============ 编辑器状态 ============
-
-export interface EditorState {
-  viewport: Viewport;
-  activeTool: ToolType;
-  elements: Element[];
-  selectedIds: string[];
-  interaction: InteractionState;
-  /** 拖动时悬停的 Frame ID */
-  hoverFrameId: string | null;
-  /** 最近一次选择操作的事件 (用于 Moveable 立即接管拖拽) */
-  lastSelectionEvent: MouseEvent | TouchEvent | null;
-}
-
-// ============ 数据导出接口 (用于持久化预留) ============
-
-export interface EditorDataExport {
-  version: string;
-  viewport: Viewport;
-  elements: Element[];
-}
