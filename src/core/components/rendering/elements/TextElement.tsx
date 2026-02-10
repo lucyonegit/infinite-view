@@ -95,11 +95,7 @@ export const TextElement = memo(function TextElement({
       const selection = window.getSelection();
       if (selection) {
         const range = document.createRange();
-        if (el.childNodes.length > 0) {
-          range.setStart(el.childNodes[0], el.innerText.length);
-        } else {
-          range.selectNodeContents(el);
-        }
+        range.selectNodeContents(el);
         range.collapse(false);
         selection.removeAllRanges();
         selection.addRange(range);

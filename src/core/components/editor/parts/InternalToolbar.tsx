@@ -1,3 +1,16 @@
+import React from 'react';
+import { 
+  ArrowUpOutlined, 
+  ArrowDownOutlined, 
+  DeleteOutlined, 
+  PictureOutlined,
+  FontSizeOutlined,
+  BorderOutlined,
+  BlockOutlined,
+  DragOutlined,
+  SelectOutlined,
+  SettingOutlined
+} from '@ant-design/icons';
 import { useEngineInstance } from '../../../react/context/useEngineInstance';
 import { useEditorEngine } from '../../../react/hooks/useEditorEngine';
 import type { ToolType } from '../../../engine/types';
@@ -6,16 +19,16 @@ import './InternalToolbar.css';
 
 interface ToolConfig {
   type: ToolType;
-  icon: string;
+  icon: React.ReactNode;
   label: string;
 }
 
 const TOOLS: ToolConfig[] = [
-  { type: 'select', icon: '↖', label: 'Select' },
-  { type: 'hand', icon: '✋', label: 'Hand tool' },
-  { type: 'rectangle', icon: '⬜', label: 'Rectangle' },
-  { type: 'text', icon: 'T', label: 'Text' },
-  { type: 'frame', icon: '⊡', label: 'Frame' },
+  { type: 'select', icon: <SelectOutlined />, label: 'Selection (V)' },
+  { type: 'hand', icon: <DragOutlined />, label: 'Hand tool (H)' },
+  { type: 'rectangle', icon: <BorderOutlined />, label: 'Rectangle (R)' },
+  { type: 'text', icon: <FontSizeOutlined />, label: 'Text (T)' },
+  { type: 'frame', icon: <BlockOutlined />, label: 'Frame (F)' },
 ];
 
 interface InternalToolbarProps {
@@ -38,63 +51,62 @@ export function InternalToolbar({ extra }: InternalToolbarProps) {
   };
 
   return (
-    <div className="editor-toolbar">
-      {TOOLS.map((tool, index) => (
-        <div key={tool.type}>
-          {index === 2 && <div className="toolbar-divider" />}
+    <div className="editor-sidebar">
+      <div className="sidebar-group">
+        {TOOLS.map((tool) => (
           <button
-            className={`toolbar-btn ${activeTool === tool.type ? 'active' : ''}`}
+            key={tool.type}
+            className={`sidebar-btn ${activeTool === tool.type ? 'active' : ''}`}
             onClick={() => engine.setActiveTool(tool.type)}
-            data-tooltip={tool.label}
+            title={tool.label}
           >
             {tool.icon}
           </button>
-        </div>
-      ))}
+        ))}
+        
+        <button
+          className="sidebar-btn"
+          onClick={() => engine.addImage()}
+          title="Add Image"
+        >
+          <PictureOutlined />
+        </button>
+      </div>
 
-      <div className="toolbar-divider" />
-      <button
-        className="toolbar-btn"
-        onClick={() => engine.addImage()}
-        data-tooltip="Add Image"
-      >
-        🖼️
-      </button>
-
-      {/* 注入业务插槽 */}
-      {extra && (
-        <>
-          <div className="toolbar-divider" />
-          {extra}
-        </>
-      )}
-
-      {selectedIds.length > 0 && (
-        <>
-          <div className="toolbar-divider" />
+      {(selectedIds.length > 0) && (
+        <div className="sidebar-group">
           <button
-            className="toolbar-btn reorder-btn"
+            className="sidebar-btn"
             onClick={() => handleReorder('front')}
-            data-tooltip="Bring to Front (Alt + ])"
+            title="Bring to Front"
           >
-            ⤒
+            <ArrowUpOutlined />
           </button>
           <button
-            className="toolbar-btn reorder-btn"
+            className="sidebar-btn"
             onClick={() => handleReorder('back')}
-            data-tooltip="Send to Back (Alt + [)"
+            title="Send to Back"
           >
-            ⤓
+            <ArrowDownOutlined />
           </button>
           <button
-            className="toolbar-btn delete-btn"
+            className="sidebar-btn delete"
             onClick={handleDelete}
-            data-tooltip="Delete (Backspace)"
+            title="Delete"
           >
-            🗑️
+            <DeleteOutlined />
           </button>
-        </>
+        </div>
       )}
+
+      <div className="sidebar-spacer" />
+
+      <div className="sidebar-group bottom">
+        <button className="sidebar-btn disabled" title="Settings">
+          <SettingOutlined />
+        </button>
+        {extra}
+      </div>
     </div>
   );
 }

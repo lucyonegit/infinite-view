@@ -87,14 +87,6 @@ export const EngineEditorPage: React.FC = () => {
                 >
                   🛠️
                 </button>
-              ),
-              floatingToolbarExtra: (el?: Element) => el && (
-                <button 
-                  className="toolbar-item"
-                  onClick={() => alert(`正在操作业务元素: ${el.id}`)}
-                >
-                  🔍 详情
-                </button>
               )
             }}
             onDataChange={(data: EditorDataExport) => {

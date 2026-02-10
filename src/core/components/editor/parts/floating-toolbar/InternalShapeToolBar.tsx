@@ -1,6 +1,6 @@
 import React from 'react';
-import { ColorPicker, Button, Divider, Space, Tooltip, Dropdown } from 'antd';
-import { DownloadOutlined, MoreOutlined, BgColorsOutlined } from '@ant-design/icons';
+import { ColorPicker, Button, Divider, Space, Tooltip, Dropdown, Slider, Popover } from 'antd';
+import { DownloadOutlined, MoreOutlined, BgColorsOutlined, BorderInnerOutlined } from '@ant-design/icons';
 import { useEngineInstance } from '../../../../react/context/useEngineInstance';
 import type { Element } from '../../../../engine/types';
 
@@ -38,6 +38,26 @@ export const InternalShapeToolBar: React.FC<ShapeToolBarProps> = ({ element, onE
             <Button type="text" size="small" icon={<BgColorsOutlined />} />
           </ColorPicker>
         </Tooltip>
+        <Popover
+          trigger="click"
+          content={
+            <div style={{ width: 140, padding: '4px 0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 }}>
+                <span style={{ fontSize: '12px', color: '#8c8c8c' }}>圆角大小</span>
+                <span style={{ fontSize: '12px', fontWeight: 500 }}>{element.style?.borderRadius || 0}px</span>
+              </div>
+              <Slider
+                min={0}
+                max={200}
+                value={element.style?.borderRadius || 0}
+                onChange={(val: number) => handleUpdateStyle({ borderRadius: val })}
+                style={{ margin: '6px 4px' }}
+              />
+            </div>
+          }
+        >
+          <Button size="small" type="text" icon={<BorderInnerOutlined />} />
+        </Popover>
       </Space>
 
       <Divider type="vertical" />
