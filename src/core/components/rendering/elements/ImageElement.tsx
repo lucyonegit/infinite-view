@@ -34,6 +34,8 @@ export const ImageElement = memo(function ImageElement({
     zIndex: element.zIndex,
     borderRadius: element.style?.borderRadius,
     opacity: element.style?.opacity,
+    userSelect: 'none',
+    WebkitUserDrag: 'none' as any,
     overflow: 'hidden',
   }), [
     element.x, element.y, element.width, element.height, 
