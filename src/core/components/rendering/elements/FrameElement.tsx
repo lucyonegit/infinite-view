@@ -58,6 +58,7 @@ export const FrameElement = memo(function FrameElement({
     zIndex: element.zIndex,
     background: 'transparent',
     border: 'none',
+    overflow: 'hidden',
     ...style,
   }), [element.x, element.y, element.width, element.height, element.rotation, element.zIndex, style]);
 

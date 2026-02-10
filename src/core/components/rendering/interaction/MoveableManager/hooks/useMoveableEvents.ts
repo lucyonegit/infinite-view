@@ -3,7 +3,7 @@ import type { OnDrag, OnResize, OnDragGroup, OnResizeGroup } from 'react-moveabl
 import type { EditorEngine } from '../../../../../engine/EditorEngine';
 import type { Element } from '../../../../../engine/types';
 import type { MoveableManagerProps } from '../types';
-import { calculateNewFontSize } from '../../../../../../components/elements/utils/textUtils';
+import { calculateNewFontSize } from '../../../../../utils/textUtils';
 
 interface UseMoveableEventsProps extends Pick<MoveableManagerProps,
   'onDrag' | 'onResize' | 'onResizeEnd'
@@ -17,7 +17,6 @@ interface UseMoveableEventsProps extends Pick<MoveableManagerProps,
 
 export function useMoveableEvents({
   engine,
-  elements: _elements, // unused now, kept for signature but engine.getState() preferred
   screenToWorld,
   setKeepRatio,
   lastEventRef,

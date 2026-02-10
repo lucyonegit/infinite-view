@@ -22,28 +22,7 @@ interface TextElementProps {
   onEndEditing?: () => void;
 }
 
-/**
- * 获取文本元素的通用样式
- */
-function getTextCommonStyle(element: Element): React.CSSProperties {
-  const fontSize = element.style?.fontSize || 24;
-  return {
-    fontSize: fontSize,
-    fontFamily: element.style?.fontFamily || 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-    textAlign: element.style?.textAlign || 'left',
-    color: element.style?.fill || '#333',
-    fontWeight: element.style?.fontWeight || 'normal',
-    fontStyle: element.style?.fontStyle || 'normal',
-    fontSynthesis: 'weight style',
-    textDecoration: element.style?.textDecoration || 'none',
-    backgroundColor: element.style?.backgroundColor || 'transparent',
-    padding: 0,
-    margin: 0,
-    lineHeight: '1.2',
-    whiteSpace: !element.fixedWidth ? 'pre' : 'pre-wrap',
-    wordBreak: !element.fixedWidth ? 'normal' : 'break-word',
-  };
-}
+import { getTextCommonStyle } from '../../../utils/textUtils';
 
 /**
  * TextElement - 文本元素渲染组件

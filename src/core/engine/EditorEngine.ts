@@ -7,7 +7,7 @@ import type {
   ElementType,
   Bounds
 } from './types';
-import { calculateNewFontSize } from '../../components/elements/utils/textUtils';
+import { calculateNewFontSize } from '../utils/textUtils';
 import { ViewportManager } from './modules/ViewportManager';
 import { ElementManager } from './modules/ElementManager';
 import { InteractionManager } from './modules/InteractionManager';
