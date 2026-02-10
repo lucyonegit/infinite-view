@@ -12,7 +12,6 @@ import { ViewportManager } from './modules/ViewportManager';
 import { ElementManager } from './modules/ElementManager';
 import { InteractionManager } from './modules/InteractionManager';
 import { getElementWorldPos, findFrameAtPoint } from './utils';
-import { createRandomImageElement } from './utils/bizUtils';
 
 export interface EditorState {
   viewport: Viewport;
@@ -507,10 +506,46 @@ export class EditorEngine {
     });
   }
 
-  public addImage(url: string) {
+  public async addImage(url?: string) {
     const { viewport } = this.state;
-    const element = createRandomImageElement(url, 1600 / viewport.zoom, 900 / viewport.zoom);
-    this.addElement(element);
+    // 使用导入的 MOCK_IMAGES
+    const { MOCK_IMAGES, createImageElement: createImg } = await import('./utils/bizUtils');
+    const targetUrl = url || MOCK_IMAGES[Math.floor(Math.random() * MOCK_IMAGES.length)];
+
+    try {
+      // 加载图片以获取真实尺寸
+      const img = new Image();
+      img.src = targetUrl;
+
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = () => reject(new Error('Failed to load image'));
+      });
+
+      const width = img.naturalWidth || 400;
+      const height = img.naturalHeight || 300;
+
+      // 计算视口中心位置 (世界坐标)
+      // viewport center in screen is (800, 450) if 1600x900
+      const centerX = (viewport.x + (800 / viewport.zoom)) - (width / 2);
+      const centerY = (viewport.y + (450 / viewport.zoom)) - (height / 2);
+
+      const element = createImg({
+        imageUrl: targetUrl,
+        width,
+        height,
+        x: Math.round(centerX),
+        y: Math.round(centerY),
+      });
+
+      this.addElement(element);
+    } catch (err) {
+      console.error('Add image failed:', err);
+      // 回退方案：使用随机位置添加
+      const { createRandomImageElement } = await import('./utils/bizUtils');
+      const fallback = createRandomImageElement(1600 / viewport.zoom, 900 / viewport.zoom);
+      this.addElement(fallback);
+    }
   }
 
   // ========== 数据导入导出 (Persistence) ==========
