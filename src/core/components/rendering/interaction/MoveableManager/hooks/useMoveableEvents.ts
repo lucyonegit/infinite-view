@@ -64,8 +64,6 @@ export function useMoveableEvents({
 
       if (resizeStartElementRef.current) {
         const startEl = resizeStartElementRef.current;
-        const newX = startEl.x + drag.beforeTranslate[0];
-        const newY = startEl.y + drag.beforeTranslate[1];
 
         if (isCorner) {
           const newFontSize = calculateNewFontSize(startEl, newWidth);
@@ -78,9 +76,9 @@ export function useMoveableEvents({
 
           target.style.transform = `translate(${drag.beforeTranslate[0]}px, ${drag.beforeTranslate[1]}px)`;
 
+          // 缩放过程中不更新 x, y，只更新宽度和字号，避免与 left/top 冲突导致抖动
+          // 最终位置会在 handleResizeEnd 中通过 transform 统一计算并提交
           engine.handleResize(id, {
-            x: newX,
-            y: newY,
             width: newWidth,
           }, true, startEl);
         } else {
@@ -88,8 +86,6 @@ export function useMoveableEvents({
           target.style.transform = `translate(${drag.beforeTranslate[0]}px, ${drag.beforeTranslate[1]}px)`;
 
           engine.handleResize(id, {
-            x: newX,
-            y: newY,
             width: newWidth,
           }, false);
         }
@@ -117,7 +113,6 @@ export function useMoveableEvents({
 
   const handleResizeEnd = useCallback(({ target }: { target: HTMLElement | SVGElement }) => {
     setKeepRatio(false);
-    engine.setInteraction({ isResizing: false, isInteracting: false });
     resizeStartElementRef.current = null;
 
     const id = target.getAttribute('data-element-id');
@@ -132,8 +127,8 @@ export function useMoveableEvents({
 
         const finalWidth = Math.floor(parseFloat(target.style.width));
         const updates: Partial<Element> = {
-          x: element.x + matrix.m41,
-          y: element.y + matrix.m42,
+          x: Math.round(element.x + matrix.m41),
+          y: Math.round(element.y + matrix.m42),
           width: finalWidth,
         };
 
@@ -141,8 +136,17 @@ export function useMoveableEvents({
           updates.height = Math.floor(parseFloat(target.style.height));
         }
 
-        engine.updateElement(id, updates);
-        target.style.transform = '';
+        // 使用 transaction 批量更新状态：先更新坐标和尺寸，再重置交互状态
+        // 确保 TextElement 的 ResizeObserver 在坐标更新后再恢复工作
+        engine.transaction(() => {
+          engine.updateElement(id, updates);
+          engine.setInteraction({ isResizing: false, isInteracting: false });
+        });
+
+        // 延迟清空 transform，给 React 留出渲染新坐标的时间，避免跳动
+        requestAnimationFrame(() => {
+          target.style.transform = '';
+        });
       }
     }
   }, [onResizeEnd, engine, setKeepRatio]);

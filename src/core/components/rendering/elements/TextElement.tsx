@@ -23,6 +23,8 @@ interface TextElementProps {
 }
 
 import { getTextCommonStyle } from '../../../utils/textUtils';
+import { useEngineInstance } from '../../../react/context/useEngineInstance';
+import { useEditorEngine } from '../../../react/hooks/useEditorEngine';
 
 /**
  * TextElement - 文本元素渲染组件
@@ -40,6 +42,13 @@ export const TextElement = memo(function TextElement({
 }: TextElementProps) {
   const elementRef = useRef<HTMLDivElement>(null);
   const editableRef = useRef<HTMLSpanElement>(null);
+  const engine = useEngineInstance();
+  
+  // 获取当前的交互状态
+  const { isDragging, isResizing } = useEditorEngine(engine, (s) => ({
+    isDragging: s.interaction.isDragging,
+    isResizing: s.interaction.isResizing,
+  }), (a, b) => a.isDragging === b.isDragging && a.isResizing === b.isResizing);
 
   // 自动进入编辑模式
   useEffect(() => {
@@ -53,9 +62,12 @@ export const TextElement = memo(function TextElement({
     if (!elementRef.current || !onUpdate) return;
 
     const observer = new ResizeObserver((entries) => {
+      // 正在拖拽或缩放时，忽略 ResizeObserver 的回调，由 Moveable 统一处理
+      if (isDragging || isResizing) return;
+
       for (const entry of entries) {
-        const newWidth = Math.ceil(entry.contentRect.width);
-        const newHeight = Math.ceil(entry.contentRect.height);
+        const newWidth = Math.floor(entry.contentRect.width);
+        const newHeight = Math.floor(entry.contentRect.height);
         
         const updates: Partial<Element> = {};
         if (!element.fixedWidth && Math.abs(newWidth - element.width) > 1 && newWidth > 0) {
@@ -75,7 +87,7 @@ export const TextElement = memo(function TextElement({
 
     observer.observe(elementRef.current);
     return () => observer.disconnect();
-  }, [element.id, element.width, element.height, element.fixedWidth, onUpdate]);
+  }, [element.id, element.width, element.height, element.fixedWidth, onUpdate, isDragging, isResizing]);
 
   // 1. 处理进入编辑模式时的初始焦点和光标位置
   useLayoutEffect(() => {

@@ -220,15 +220,15 @@ export class EditorEngine {
         if (isCorner && originalElement && bounds.width) {
           // 角点缩放：等比缩放字体，更新位置和宽度
           const newFontSize = calculateNewFontSize(originalElement, bounds.width);
-          updates.x = bounds.x;
-          updates.y = bounds.y;
+          if (bounds.x !== undefined) updates.x = bounds.x;
+          if (bounds.y !== undefined) updates.y = bounds.y;
           updates.width = bounds.width;
           updates.style = { ...el.style, fontSize: newFontSize };
         } else {
           // 侧边缩放：仅更新宽度，设置固定宽度模式（高度会由 ResizeObserver 自动调整）
-          updates.x = bounds.x;
-          updates.y = bounds.y;
-          updates.width = bounds.width;
+          if (bounds.x !== undefined) updates.x = bounds.x;
+          if (bounds.y !== undefined) updates.y = bounds.y;
+          if (bounds.width !== undefined) updates.width = bounds.width;
           updates.fixedWidth = true;
         }
       } else {
