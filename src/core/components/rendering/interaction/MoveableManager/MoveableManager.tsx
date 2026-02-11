@@ -132,6 +132,7 @@ export const MoveableManager = forwardRef<MoveableManagerRef, MoveableManagerPro
         isDisplaySnapDigit={false}
         onDragStart={(e) => {
           const mouseEvent = e.inputEvent as MouseEvent;
+          lastEventRef.current = mouseEvent;
           const moveableAreas = document.querySelectorAll('.moveable-area');
           moveableAreas.forEach(area => { (area as HTMLElement).style.pointerEvents = 'none'; });
           const actualTarget = document.elementFromPoint(mouseEvent.clientX, mouseEvent.clientY) as HTMLElement;
@@ -159,6 +160,7 @@ export const MoveableManager = forwardRef<MoveableManagerRef, MoveableManagerPro
         onDrag={handleDrag}
         onDragEnd={handleDragEnd}
         onResizeStart={(e) => {
+          lastEventRef.current = e.inputEvent as MouseEvent;
           engine.setInteraction({ isResizing: true, isInteracting: true });
           const targetId = e.target.getAttribute('data-element-id');
           const targetElement = elements.find((el: Element) => el.id === targetId);
@@ -170,12 +172,17 @@ export const MoveableManager = forwardRef<MoveableManagerRef, MoveableManagerPro
         }}
         onResizeEnd={handleResizeEnd}
         onResize={handleResize}
-        onDragGroupStart={() => { 
+        onDragGroupStart={(e) => { 
+          lastEventRef.current = e.inputEvent as MouseEvent;
           isDraggingRef.current = true; 
           engine.setInteraction({ isDragging: true, isInteracting: true });
         }}
         onDragGroup={handleDragGroup}
         onDragGroupEnd={handleDragGroupEnd}
+        onResizeGroupStart={(e) => {
+          lastEventRef.current = e.inputEvent as MouseEvent;
+          engine.setInteraction({ isResizing: true, isInteracting: true });
+        }}
         onResizeGroup={handleResizeGroup}
         onResizeGroupEnd={handleResizeGroupEnd}
         onClick={(e) => {
