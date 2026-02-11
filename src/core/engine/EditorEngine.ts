@@ -226,9 +226,10 @@ export class EditorEngine {
           updates.style = { ...el.style, fontSize: newFontSize };
         } else {
           // 侧边缩放：仅更新宽度，设置固定宽度模式（高度会由 ResizeObserver 自动调整）
+          updates.x = bounds.x;
+          updates.y = bounds.y;
           updates.width = bounds.width;
           updates.fixedWidth = true;
-          // 侧边缩放不更新位置（保持原位）
         }
       } else {
         // 普通元素：同步更新所有属性

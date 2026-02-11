@@ -1,6 +1,5 @@
-import React from 'react';
 import { Button, Space, Divider, Tooltip, ColorPicker, Slider, Popover } from 'antd';
-import { DownloadOutlined, BgColorsOutlined, BorderInnerOutlined } from '@ant-design/icons';
+import { DownloadOutlined, BgColorsOutlined, BorderInnerOutlined, ScissorOutlined, ExpandOutlined, RobotOutlined, ExperimentOutlined, AreaChartOutlined } from '@ant-design/icons';
 import { useEngineInstance } from '../../../../react/context/useEngineInstance';
 import type { Element } from '../../../../engine/types';
 
@@ -54,6 +53,14 @@ export const InternalImageToolBar: React.FC<ImageToolBarProps> = ({ element, onE
             <Button type="text" size="small" icon={<BgColorsOutlined />} />
           </ColorPicker>
         </Tooltip>
+      </Space>
+      <Divider type="vertical" />
+      <Space size={0}>
+        <Button size="small" type="text" icon={<ScissorOutlined />} onClick={() => console.log('AI Action: remove-bg')}>智能抠图</Button>
+        <Button size="small" type="text" icon={<ExpandOutlined />} onClick={() => console.log('AI Action: upscale')}>高清修复</Button>
+        <Button size="small" type="text" icon={<RobotOutlined />} onClick={() => console.log('AI Action: prompt')}>提取提示词</Button>
+        <Button size="small" type="text" icon={<ExperimentOutlined />} onClick={() => console.log('AI Action: style')}>风格转换</Button>
+        <Button size="small" type="text" icon={<AreaChartOutlined />} onClick={() => console.log('AI Action: analyze')}>图层分析</Button>
       </Space>
       <Divider type="vertical" />
       <Button size="small" type="text" icon={<DownloadOutlined />} onClick={onExport}>

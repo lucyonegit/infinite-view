@@ -62,31 +62,37 @@ export function useMoveableEvents({
         engine.setInteraction({ isResizing: true, isInteracting: true });
       }
 
-      if (isCorner && resizeStartElementRef.current) {
-        const newFontSize = calculateNewFontSize(resizeStartElementRef.current, newWidth);
+      if (resizeStartElementRef.current) {
+        const startEl = resizeStartElementRef.current;
+        const newX = startEl.x + drag.beforeTranslate[0];
+        const newY = startEl.y + drag.beforeTranslate[1];
 
-        target.style.width = `${newWidth}px`;
-        const textContainer = target.querySelector('span, textarea') as HTMLElement;
-        if (textContainer) {
-          textContainer.style.fontSize = `${newFontSize}px`;
+        if (isCorner) {
+          const newFontSize = calculateNewFontSize(startEl, newWidth);
+
+          target.style.width = `${newWidth}px`;
+          const textContainer = target.querySelector('span, textarea') as HTMLElement;
+          if (textContainer) {
+            textContainer.style.fontSize = `${newFontSize}px`;
+          }
+
+          target.style.transform = `translate(${drag.beforeTranslate[0]}px, ${drag.beforeTranslate[1]}px)`;
+
+          engine.handleResize(id, {
+            x: newX,
+            y: newY,
+            width: newWidth,
+          }, true, startEl);
+        } else {
+          target.style.width = `${newWidth}px`;
+          target.style.transform = `translate(${drag.beforeTranslate[0]}px, ${drag.beforeTranslate[1]}px)`;
+
+          engine.handleResize(id, {
+            x: newX,
+            y: newY,
+            width: newWidth,
+          }, false);
         }
-
-        target.style.transform = `translate(${drag.beforeTranslate[0]}px, ${drag.beforeTranslate[1]}px)`;
-
-        engine.updateElement(id, {
-          x: element.x + drag.beforeTranslate[0],
-          y: element.y + drag.beforeTranslate[1],
-          width: newWidth,
-          style: { ...element.style, fontSize: newFontSize }
-        });
-      } else {
-        target.style.width = `${newWidth}px`;
-        engine.updateElement(id, {
-          x: element.x,
-          y: element.y,
-          width: newWidth,
-          fixedWidth: true,
-        });
       }
     } else {
       if (!engine.getState().interaction.isResizing) {
