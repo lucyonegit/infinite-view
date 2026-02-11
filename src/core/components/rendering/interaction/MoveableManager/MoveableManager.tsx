@@ -53,10 +53,13 @@ export const MoveableManager = forwardRef<MoveableManagerRef, MoveableManagerPro
     // 3. 事件处理逻辑
     const {
       handleDrag,
+      handleDragEnd,
       handleResize,
       handleResizeEnd,
       handleDragGroup,
+      handleDragGroupEnd,
       handleResizeGroup,
+      handleResizeGroupEnd,
       resizeStartElementRef,
     } = useMoveableEvents({
       engine,
@@ -64,9 +67,13 @@ export const MoveableManager = forwardRef<MoveableManagerRef, MoveableManagerPro
       screenToWorld,
       setKeepRatio,
       lastEventRef,
+      isDraggingRef,
       onDrag,
+      onDragEnd,
       onResize,
       onResizeEnd,
+      onDragStart,
+      onResizeStart,
     });
 
     // 默认配置
@@ -150,18 +157,7 @@ export const MoveableManager = forwardRef<MoveableManagerRef, MoveableManagerPro
           engine.setInteraction({ isDragging: true, isInteracting: true });
         }}
         onDrag={handleDrag}
-        onDragEnd={() => { 
-          isDraggingRef.current = false; 
-          lastEventRef.current = null; 
-          engine.setHoverFrame(null);
-          engine.setInteraction({ isDragging: false, isInteracting: false });
-          
-          const targetId = targets[0]?.getAttribute('data-element-id');
-          const element = elements.find((el: Element) => el.id === targetId);
-          if (element && targetId) {
-            onDragEnd?.({ elementId: targetId, element });
-          }
-        }}
+        onDragEnd={handleDragEnd}
         onResizeStart={(e) => {
           engine.setInteraction({ isResizing: true, isInteracting: true });
           const targetId = e.target.getAttribute('data-element-id');
@@ -179,13 +175,9 @@ export const MoveableManager = forwardRef<MoveableManagerRef, MoveableManagerPro
           engine.setInteraction({ isDragging: true, isInteracting: true });
         }}
         onDragGroup={handleDragGroup}
-        onDragGroupEnd={() => { 
-          isDraggingRef.current = false; 
-          lastEventRef.current = null; 
-          engine.setHoverFrame(null); 
-          engine.setInteraction({ isDragging: false, isInteracting: false });
-        }}
+        onDragGroupEnd={handleDragGroupEnd}
         onResizeGroup={handleResizeGroup}
+        onResizeGroupEnd={handleResizeGroupEnd}
         onClick={(e) => {
           if (e.inputEvent.detail === 2) {
             const id = (e.target as HTMLElement).getAttribute('data-element-id');

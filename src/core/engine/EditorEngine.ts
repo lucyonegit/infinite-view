@@ -201,6 +201,18 @@ export class EditorEngine {
   }
 
   /**
+   * 处理拖拽预览（仅更新高亮状态，不更新坐标）
+   */
+  public handleDragPreview(ids: string[], mouseWorld: Point): string | null {
+    let hoverFrameId: string | null = null;
+    this.setState((state) => {
+      hoverFrameId = InteractionManager.handleDragPreview(state.elements, ids, mouseWorld);
+      return { hoverFrameId };
+    });
+    return hoverFrameId;
+  }
+
+  /**
    * 处理缩放交互
    * @param id 元素 ID
    * @param bounds 新的几何属性

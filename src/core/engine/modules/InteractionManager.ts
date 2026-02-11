@@ -28,54 +28,75 @@ export class InteractionManager {
       }
     });
 
-    // 2. Handle Frame nesting
+    // 2. Handle Frame nesting (Symmetric Cursor-based Logic)
     if (ids.length === 1 && mouseWorld) {
       const id = ids[0];
       const el = nextElements.find(e => e.id === id);
 
       if (el && el.type !== 'frame') {
-        if (el.parentId) {
-          const parentFrame = nextElements.find(p => p.id === el.parentId);
-          if (parentFrame) {
-            const elementRight = el.x + el.width;
-            const elementBottom = el.y + el.height;
-            if (elementRight <= 0 || el.x >= parentFrame.width || elementBottom <= 0 || el.y >= parentFrame.height) {
-              const worldPos = getElementWorldPos(nextElements, id);
-              const idx = nextElements.findIndex(e => e.id === id);
-              nextElements[idx] = { ...nextElements[idx], parentId: undefined, x: worldPos.x, y: worldPos.y };
+        const targetFrame = findFrameAtPoint(nextElements, mouseWorld.x, mouseWorld.y, ids);
+        const targetFrameId = targetFrame?.id || undefined;
 
-              const pIdx = nextElements.findIndex(e => e.id === parentFrame.id);
-              nextElements[pIdx] = {
-                ...nextElements[pIdx],
-                children: (nextElements[pIdx].children || []).filter(cid => cid !== id)
-              };
-            }
-          }
-        } else {
-          const targetFrame = findFrameAtPoint(nextElements, mouseWorld.x, mouseWorld.y, ids);
-          if (targetFrame) {
-            if (nextHoverFrameId !== targetFrame.id) {
-              nextHoverFrameId = targetFrame.id;
-              const frameWorldPos = getElementWorldPos(nextElements, targetFrame.id);
-              const relativeX = el.x - frameWorldPos.x;
-              const relativeY = el.y - frameWorldPos.y;
+        // 如果鼠标所处的 Frame 与当前父级不一致，执行嵌套/脱离转换
+        if (el.parentId !== targetFrameId) {
+          nextHoverFrameId = targetFrameId || null;
 
-              const idx = nextElements.findIndex(e => e.id === id);
-              nextElements[idx] = { ...el, parentId: targetFrame.id, x: relativeX, y: relativeY };
+          // 获取当前世界坐标，作为转换基准
+          const worldPos = getElementWorldPos(nextElements, id);
+          const idx = nextElements.findIndex(e => e.id === id);
 
-              const fIdx = nextElements.findIndex(e => e.id === targetFrame.id);
-              const children = nextElements[fIdx].children || [];
-              if (!children.includes(id)) {
-                nextElements[fIdx] = { ...nextElements[fIdx], children: [...children, id] };
-              }
+          if (targetFrameId) {
+            // 嵌套入新 Frame
+            const frameWorldPos = getElementWorldPos(nextElements, targetFrameId);
+            nextElements[idx] = {
+              ...el,
+              parentId: targetFrameId,
+              x: worldPos.x - frameWorldPos.x,
+              y: worldPos.y - frameWorldPos.y
+            };
+
+            // 更新新父级的 children
+            const fIdx = nextElements.findIndex(e => e.id === targetFrameId);
+            const children = nextElements[fIdx].children || [];
+            if (!children.includes(id)) {
+              nextElements[fIdx] = { ...nextElements[fIdx], children: [...children, id] };
             }
           } else {
-            nextHoverFrameId = null;
+            // 脱离到根画布
+            nextElements[idx] = {
+              ...el,
+              parentId: undefined,
+              x: worldPos.x,
+              y: worldPos.y
+            };
+          }
+
+          // 如果之前有父级，从旧父级中移除
+          if (el.parentId) {
+            const oldPIdx = nextElements.findIndex(e => e.id === el.parentId);
+            if (oldPIdx !== -1) {
+              nextElements[oldPIdx] = {
+                ...nextElements[oldPIdx],
+                children: (nextElements[oldPIdx].children || []).filter(cid => cid !== id)
+              };
+            }
           }
         }
       }
     }
 
     return { elements: nextElements, hoverFrameId: nextHoverFrameId };
+  }
+
+  /**
+   * 仅处理拖拽时的预览逻辑（如高亮目标 Frame），不实际更新元素坐标
+   */
+  public static handleDragPreview(
+    elements: Element[],
+    ids: string[],
+    mouseWorld: Point
+  ): string | null {
+    const targetFrame = findFrameAtPoint(elements, mouseWorld.x, mouseWorld.y, ids);
+    return targetFrame ? targetFrame.id : null;
   }
 }
