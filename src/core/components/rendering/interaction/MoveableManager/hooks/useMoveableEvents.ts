@@ -182,19 +182,37 @@ export function useMoveableEvents({
 
   const handleDragGroup = useCallback(({ events }: OnDragGroup) => {
     if (events.length === 0) return;
+    const { selectedIds } = engine.getState();
 
     events.forEach(({ target, beforeTranslate }) => {
-      target.style.transform = `translate(${beforeTranslate[0]}px, ${beforeTranslate[1]}px)`;
+      const id = target.getAttribute('data-element-id');
+      if (id) {
+        const { elements } = engine.getState();
+        const element = elements.find(el => el.id === id);
+        // 如果父级也在选中组中，子元素会跟随父级移动，不需要重复应用位移
+        if (element?.parentId && selectedIds.includes(element.parentId)) return;
+
+        target.style.transform = `translate(${beforeTranslate[0]}px, ${beforeTranslate[1]}px)`;
+      }
     });
-  }, []);
+  }, [engine]);
 
   const handleDragGroupEnd = useCallback(({ targets }: { targets: (HTMLElement | SVGElement)[] }) => {
+    const { selectedIds } = engine.getState();
+
     targets.forEach(target => {
       const id = target.getAttribute('data-element-id');
       if (id) {
         const { elements } = engine.getState();
         const element = elements.find((el: Element) => el.id === id);
         if (element) {
+          // 逻辑同上：如果父级也被选中，则跳过子级的状态更新
+          if (element.parentId && selectedIds.includes(element.parentId)) {
+            // 虽然不更新状态，但也要清理 transform
+            requestAnimationFrame(() => { target.style.transform = ''; });
+            return;
+          }
+
           const computedStyle = window.getComputedStyle(target);
           const matrix = new DOMMatrix(computedStyle.transform);
           engine.updateElement(id, {
@@ -212,11 +230,17 @@ export function useMoveableEvents({
   }, [engine, isDraggingRef, lastEventRef]);
 
   const handleResizeGroup = useCallback(({ events }: OnResizeGroup) => {
+    const { selectedIds } = engine.getState();
+
     events.forEach(({ target, width, height, drag, direction }) => {
       const id = target.getAttribute('data-element-id');
       if (id) {
         const { elements: currentElements } = engine.getState();
         const element = currentElements.find(el => el.id === id);
+        if (!element) return;
+
+        // 如果父级也在选中组中，子元素会跟随父级缩放，不需要重复应用位移
+        if (element.parentId && selectedIds.includes(element.parentId)) return;
 
         const newWidth = Math.floor(width);
         const newHeight = Math.floor(height);
@@ -246,6 +270,8 @@ export function useMoveableEvents({
   }, [engine]);
 
   const handleResizeGroupEnd = useCallback(({ targets }: { targets: (HTMLElement | SVGElement)[] }) => {
+    const { selectedIds } = engine.getState();
+
     engine.transaction(() => {
       targets.forEach(target => {
         const id = target.getAttribute('data-element-id');
@@ -253,6 +279,12 @@ export function useMoveableEvents({
           const { elements: currentElements } = engine.getState();
           const element = currentElements.find((el: Element) => el.id === id);
           if (element) {
+            // 逻辑同上：如果父级也被选中，则跳过子级
+            if (element.parentId && selectedIds.includes(element.parentId)) {
+              requestAnimationFrame(() => { target.style.transform = ''; });
+              return;
+            }
+
             const computedStyle = window.getComputedStyle(target);
             const matrix = new DOMMatrix(computedStyle.transform);
 
